@@ -266,6 +266,15 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
                 </div>
               )}
 
+              {/* Caption Overlay (always visible when caption exists) */}
+              {reel.metadata?.caption && (
+                <div className="absolute bottom-16 left-0 right-0 px-4">
+                  <p className="text-white text-sm leading-relaxed drop-shadow-lg bg-black/30 backdrop-blur-sm rounded-lg px-3 py-2">
+                    {reel.metadata.caption}
+                  </p>
+                </div>
+              )}
+
               {/* Video Info Overlay */}
               <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent transition-opacity ${showControls ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="flex items-center gap-2 mb-2">
