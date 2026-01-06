@@ -105,19 +105,51 @@ export default function HoroscopePage() {
       {/* Sign Selector */}
       <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
         <p className="text-xs text-gray-500 mb-3">Select your sign</p>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {SIGNS.map((sign) => (
             <button
               key={sign.id}
               onClick={() => setSelectedSign(sign.id)}
-              className={`p-3 rounded-xl text-center transition-all duration-200 ${
+              className={`relative aspect-square rounded-xl overflow-hidden transition-all duration-300 group ${
                 selectedSign === sign.id
-                  ? 'bg-gradient-to-br from-amber-600 to-orange-600 text-white scale-105'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-[hsl(0,0%,7%)] scale-[1.02]'
+                  : 'hover:scale-[1.02] hover:ring-1 hover:ring-gray-600'
               }`}
             >
-              <span className="text-2xl block mb-1">{sign.symbol}</span>
-              <span className="text-xs">{sign.name}</span>
+              {/* Background Image */}
+              <Image
+                src={ZODIAC_IMAGES[sign.id]}
+                alt={sign.name}
+                fill
+                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 16vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+              
+              {/* Dark gradient overlay for text readability */}
+              <div className={`absolute inset-0 transition-opacity duration-300 ${
+                selectedSign === sign.id
+                  ? 'bg-gradient-to-t from-amber-900/80 via-black/40 to-transparent'
+                  : 'bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/70'
+              }`} />
+              
+              {/* Content */}
+              <div className="absolute inset-0 flex flex-col items-center justify-end p-2 pb-3">
+                <span className={`text-2xl mb-0.5 drop-shadow-lg transition-transform duration-300 ${
+                  selectedSign === sign.id ? 'scale-110' : 'group-hover:scale-105'
+                }`}>
+                  {sign.symbol}
+                </span>
+                <span className={`text-xs font-medium drop-shadow-lg ${
+                  selectedSign === sign.id ? 'text-amber-200' : 'text-white/90'
+                }`}>
+                  {sign.name}
+                </span>
+              </div>
+              
+              {/* Selected indicator glow */}
+              {selectedSign === sign.id && (
+                <div className="absolute inset-0 bg-amber-500/10 pointer-events-none" />
+              )}
             </button>
           ))}
         </div>
