@@ -39,6 +39,30 @@ export default function HoroscopePage() {
     toast({ type: 'success', message: 'Your reading is ready!' })
   }
 
+  const handleSaveReading = () => {
+    if (!reading) return
+    
+    saveItem({
+      type: 'horoscope',
+      sourceId: reading.id,
+      title: `${reading.sign.name} ${reading.sign.symbol} Daily Reading`,
+      summary: reading.mood,
+      metadata: {
+        sign: reading.sign,
+        date: reading.date,
+        love: reading.love,
+        career: reading.career,
+        mood: reading.mood,
+        luckyNumber: reading.luckyNumber,
+        luckyColor: reading.luckyColor
+      },
+      createdAt: reading.generatedAt
+    })
+    
+    setIsReadingSaved(true)
+    toast({ type: 'success', message: 'Saved ✓' })
+  }
+
   if (!mounted) {
     return (
       <div className="space-y-6 animate-pulse">
