@@ -3,15 +3,33 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle } from 'lucide-react'
+import { 
+  Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle,
+  Brain, Star, Heart, Bot, AlarmClock
+} from 'lucide-react'
 import { ToastProvider } from '@/components/ui/ToastProvider'
+import ReminderPopup from '@/components/ReminderPopup'
 import { supabase, getSession } from '@/lib/supabase/client'
 import { isDevelopment, isProduction } from '@/lib/supabase/health'
 
 const navItems = [
   { href: '/think', label: 'Think', icon: Lightbulb },
+  { href: '/thinking', label: 'Thinking', icon: Brain },
+  { href: '/horoscope', label: 'Horoscope', icon: Star },
+  { href: '/tarot', label: 'Tarot', icon: Sparkles },
+  { href: '/soulmate', label: 'SoulMate', icon: Heart },
+  { href: '/savebot', label: 'SaveBot', icon: Bot },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/profile', label: 'Profile', icon: User },
+]
+
+// Mobile nav shows fewer items
+const mobileNavItems = [
+  { href: '/think', label: 'Think', icon: Lightbulb },
+  { href: '/thinking', label: 'Thinking', icon: Brain },
+  { href: '/soulmate', label: 'SoulMate', icon: Heart },
+  { href: '/notifications', label: 'Alerts', icon: Bell },
   { href: '/profile', label: 'Profile', icon: User },
 ]
 
@@ -156,8 +174,8 @@ export default function AppLayout({ children }) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4">
-            <ul className="space-y-2">
+          <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
+            <ul className="space-y-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
@@ -165,19 +183,34 @@ export default function AppLayout({ children }) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive
                           ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
                           : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                       }`}
                     >
                       <Icon className={`w-5 h-5 ${isActive ? 'text-purple-400' : ''}`} />
-                      <span className="font-medium">{item.label}</span>
+                      <span className="font-medium text-sm">{item.label}</span>
                     </Link>
                   </li>
                 )
               })}
             </ul>
+            
+            {/* Reminders Link */}
+            <div className="mt-4 pt-4 border-t border-gray-800">
+              <Link
+                href="/reminders"
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
+                  pathname === '/reminders'
+                    ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                }`}
+              >
+                <AlarmClock className={`w-5 h-5 ${pathname === '/reminders' ? 'text-purple-400' : ''}`} />
+                <span className="font-medium text-sm">Reminders</span>
+              </Link>
+            </div>
           </nav>
 
           {/* Footer */}
@@ -197,23 +230,23 @@ export default function AppLayout({ children }) {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-2 py-2 z-50">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50">
           <ul className="flex justify-around items-center">
-            {navItems.map((item) => {
+            {mobileNavItems.map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                    className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${
                       isActive
                         ? 'text-purple-400'
                         : 'text-gray-500 hover:text-gray-300'
                     }`}
                   >
-                    <Icon className={`w-6 h-6 ${isActive ? 'scale-110' : ''} transition-transform`} />
-                    <span className="text-xs font-medium">{item.label}</span>
+                    <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''} transition-transform`} />
+                    <span className="text-[10px] font-medium">{item.label}</span>
                   </Link>
                 </li>
               )
@@ -221,6 +254,9 @@ export default function AppLayout({ children }) {
           </ul>
         </nav>
       </div>
+      
+      {/* Global Reminder Popup */}
+      <ReminderPopup />
     </ToastProvider>
   )
 }
