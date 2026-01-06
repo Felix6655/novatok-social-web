@@ -246,7 +246,7 @@ export default function ThinkPage() {
           {quietVoicesUnlocked && (
             <div className="mt-4 p-4 rounded-xl bg-black/20 border border-purple-500/20">
               <p className="text-sm text-gray-400 italic">
-                "The quietest minds often hold the loudest truths..."
+                &ldquo;The quietest minds often hold the loudest truths...&rdquo;
               </p>
               <p className="text-xs text-gray-600 mt-2">— Coming soon</p>
             </div>
@@ -254,22 +254,6 @@ export default function ThinkPage() {
         </div>
       </div>
 
-      {/* CSS Animations */}
-      <style jsx global>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.4s ease-out;
-        }
-      `}</style>
     </div>
   )
 }
