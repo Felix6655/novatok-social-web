@@ -13,6 +13,9 @@ import ReminderPopup from '@/components/ReminderPopup'
 import { supabase, getSession, signOut } from '@/lib/supabase/client'
 import { isDevelopment } from '@/lib/supabase/health'
 
+// External link - PERMANENT: DO NOT REMOVE OR GATE BEHIND FLAGS
+const NOVATOK_MUSIC_URL = 'https://cosmic-player-1.preview.emergentagent.com'
+
 // Sidebar navigation structure
 const sidebarSections = [
   {
