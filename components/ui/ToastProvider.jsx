@@ -63,7 +63,7 @@ export function ToastProvider({ children }) {
                 pointer-events-auto
                 flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm
                 shadow-lg min-w-[280px] max-w-[90vw]
-                animate-[toast-in_0.3s_ease-out_forwards]
+                animate-toast-in
                 ${toastStyles[t.type] || toastStyles.info}
               `}
             >
