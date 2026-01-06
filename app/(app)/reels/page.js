@@ -468,7 +468,7 @@ function ContentReelCard({ reel, isActive, onSaveToggle }) {
   )
 }
 
-function EmptyState({ onUploadClick }) {
+function EmptyState({ onUploadClick, onRecordClick }) {
   return (
     <div className="h-full w-full flex items-center justify-center p-8">
       <div className="text-center max-w-md">
@@ -480,18 +480,27 @@ function EmptyState({ onUploadClick }) {
         </div>
         
         <h2 className="text-2xl font-bold text-white mb-3">No reels yet</h2>
-        <p className="text-gray-400 mb-8">
-          Upload a video or create content to see your reels here.
+        <p className="text-gray-400 mb-6">
+          Record or upload a video to create your first reel.
         </p>
         
-        {/* Upload Button */}
-        <button
-          onClick={onUploadClick}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold mx-auto mb-6 hover:opacity-90 transition-opacity"
-        >
-          <Upload className="w-5 h-5" />
-          Upload Video
-        </button>
+        {/* Record/Upload Buttons */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <button
+            onClick={onRecordClick}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors"
+          >
+            <Video className="w-5 h-5" />
+            Record Video
+          </button>
+          <button
+            onClick={onUploadClick}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Upload className="w-5 h-5" />
+            Upload Video
+          </button>
+        </div>
         
         <p className="text-gray-500 text-sm mb-4">Or create content:</p>
         
