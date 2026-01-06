@@ -21,6 +21,8 @@ export default function ThinkPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [quietVoicesUnlocked, setQuietVoicesUnlocked] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [lastThought, setLastThought] = useState(null)
+  const [isLastSaved, setIsLastSaved] = useState(false)
   const textareaRef = useRef(null)
   const { toast } = useToast()
 
