@@ -1,10 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Star, Sparkles, Heart, Briefcase, Smile, Loader2, Bookmark } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { generateReading, saveReading, SIGNS } from '@/lib/horoscope/storage'
 import { saveItem, isSaved } from '@/lib/saved/storage'
+
+// Map sign IDs to poster images
+const ZODIAC_IMAGES = {
+  aries: '/zodiac/aries.jpg',
+  taurus: '/zodiac/taurus.jpg',
+  gemini: '/zodiac/gemini.jpg',
+  cancer: '/zodiac/cancer.jpg',
+  leo: '/zodiac/leo.jpg',
+  virgo: '/zodiac/virgo.jpg',
+  libra: '/zodiac/libra.jpg',
+  scorpio: '/zodiac/scorpio.jpg',
+  sagittarius: '/zodiac/sagittarius.jpg',
+  capricorn: '/zodiac/capricorn.jpg',
+  aquarius: '/zodiac/aquarius.jpg',
+  pisces: '/zodiac/pisces.jpg',
+}
 
 export default function HoroscopePage() {
   const { toast } = useToast()
