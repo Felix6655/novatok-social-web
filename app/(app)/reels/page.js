@@ -557,7 +557,19 @@ function ContentReelCard({ reel, isActive, onSaveToggle, onReact }) {
           >
             <Share2 className="w-5 h-5" />
           </button>
+
+          {/* Reactions */}
+          <ReactionButtons reelId={reel.id} onReact={onReact} />
         </div>
+
+        {/* Caption Badge (bottom of card) */}
+        {caption && (
+          <div className="absolute bottom-20 left-4 right-4 md:left-0 md:right-auto md:max-w-[300px]">
+            <p className="text-white/80 text-sm bg-black/40 backdrop-blur-sm rounded-lg px-3 py-2">
+              {caption}
+            </p>
+          </div>
+        )}
 
         {/* Mobile Actions */}
         <div className="md:hidden flex items-center justify-center gap-4 mt-4">
