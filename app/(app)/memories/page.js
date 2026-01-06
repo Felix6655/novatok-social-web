@@ -344,7 +344,7 @@ export default function MemoriesPage() {
               <DateSeparator label="Today" count={groupedMemories.today.length} />
               <div className="space-y-3 mt-2">
                 {groupedMemories.today.map(memory => (
-                  <MemoryCard key={memory.id} memory={memory} />
+                  <MemoryCard key={memory.id} memory={memory} onSaveToggle={handleSaveToggle} />
                 ))}
               </div>
             </div>
@@ -356,7 +356,7 @@ export default function MemoriesPage() {
               <DateSeparator label="Yesterday" count={groupedMemories.yesterday.length} />
               <div className="space-y-3 mt-2">
                 {groupedMemories.yesterday.map(memory => (
-                  <MemoryCard key={memory.id} memory={memory} />
+                  <MemoryCard key={memory.id} memory={memory} onSaveToggle={handleSaveToggle} />
                 ))}
               </div>
             </div>
