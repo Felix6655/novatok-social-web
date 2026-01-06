@@ -7,7 +7,8 @@ import {
   ExternalLink, Share2, ChevronUp, ChevronDown,
   CheckCircle, XCircle, Play, Pause, Volume2, VolumeX,
   Upload, Film, AlertCircle, RefreshCw, Trash2,
-  Video, Mic, MicOff, Circle, Square, RotateCcw, Check, X
+  Video, Mic, MicOff, Circle, Square, RotateCcw, Check, X,
+  Info, Loader2
 } from 'lucide-react'
 import { 
   getAllReelItems,
@@ -21,9 +22,8 @@ import {
 import {
   validateVideoFile,
   extractVideoMetadata,
-  saveVideoMetadata,
-  saveRecordedVideoMetadata,
-  deleteVideoMetadata,
+  uploadVideo,
+  deleteVideo,
   markVideosAsNeedingRelink,
   markVideoAsRelinked,
   formatDuration,
@@ -54,13 +54,28 @@ const QUICK_ACTIONS = [
   { id: 'thinking', label: 'Thinking', href: '/thinking', icon: Brain, color: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/30', iconColor: 'text-green-400' }
 ]
 
+// Local Mode Banner Component
+function LocalModeBanner() {
+  return (
+    <div className="absolute top-16 left-4 md:top-6 md:left-auto md:right-32 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-medium">
+      <Info className="w-3 h-3" />
+      <span>Local mode — videos are session-only</span>
+    </div>
+  )
+}
+
 // Video Reel Card Component
-function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDelete, isMuted, onMuteToggle }) {
+function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDelete, isMuted, onMuteToggle, isSupabaseMode }) {
   const config = getReelConfig(reel.type)
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showControls, setShowControls] = useState(true)
+
+  // Determine the video URL to use
+  // In Supabase mode: use signedUrl from the reel data
+  // In local mode: use the passed objectUrl from state
+  const videoUrl = isSupabaseMode ? reel.signedUrl : objectUrl
 
   useEffect(() => {
     setSaved(isSaved(reel.type, reel.id))
@@ -68,7 +83,7 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
 
   // Auto-play/pause based on active state
   useEffect(() => {
-    if (!videoRef.current || !objectUrl) return
+    if (!videoRef.current || !videoUrl) return
 
     if (isActive) {
       videoRef.current.play().then(() => {
@@ -80,7 +95,7 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
       videoRef.current.pause()
       setIsPlaying(false)
     }
-  }, [isActive, objectUrl])
+  }, [isActive, videoUrl])
 
   // Update muted state
   useEffect(() => {
@@ -90,7 +105,7 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
   }, [isMuted])
 
   const togglePlayPause = () => {
-    if (!videoRef.current || !objectUrl) return
+    if (!videoRef.current || !videoUrl) return
 
     if (isPlaying) {
       videoRef.current.pause()
@@ -123,7 +138,8 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
     onSaveToggle?.('share')
   }
 
-  const needsRelink = reel.metadata?.needsRelink && !objectUrl
+  // Only show re-link in local mode when video needs it
+  const needsRelink = !isSupabaseMode && reel.metadata?.needsRelink && !objectUrl
 
   // Hide controls after 3 seconds of no interaction
   useEffect(() => {
@@ -142,11 +158,11 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
       <div className="relative w-full max-w-lg h-full max-h-[600px] flex flex-col">
         {/* Video Container */}
         <div className={`flex-1 rounded-3xl bg-black border ${config.borderAccent} shadow-2xl overflow-hidden relative`}>
-          {objectUrl ? (
+          {videoUrl ? (
             <>
               <video
                 ref={videoRef}
-                src={objectUrl}
+                src={videoUrl}
                 className="w-full h-full object-contain bg-black"
                 autoPlay={isActive}
                 loop
@@ -168,6 +184,9 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
                 <div className="flex items-center gap-2 mb-2">
                   <Film className={`w-4 h-4 ${config.accentColor}`} />
                   <span className={`text-sm font-semibold ${config.accentColor}`}>Video Reel</span>
+                  {isSupabaseMode && (
+                    <span className="text-xs text-green-400 bg-green-500/20 px-2 py-0.5 rounded-full">☁️ Cloud</span>
+                  )}
                 </div>
                 <h3 className="text-white font-medium truncate">{reel.title}</h3>
                 <p className="text-white/60 text-sm">{formatDuration(reel.metadata?.duration)}</p>
@@ -182,7 +201,7 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
               </button>
             </>
           ) : needsRelink ? (
-            // Needs Relink State
+            // Needs Relink State (only in local mode)
             <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-4">
                 <RefreshCw className="w-8 h-8 text-amber-400" />
@@ -196,14 +215,14 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
                 Re-link File
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id); }}
+                onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id, reel.metadata?.storagePath); }}
                 className="mt-2 px-4 py-2 rounded-lg text-red-400 text-sm hover:bg-red-500/10 transition-colors"
               >
                 Delete
               </button>
             </div>
           ) : (
-            // No video available
+            // No video available (loading or error)
             <div className="w-full h-full flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
                 <Film className="w-8 h-8 text-gray-600" />
@@ -241,6 +260,15 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
           >
             <Share2 className="w-5 h-5" />
           </button>
+
+          {/* Delete button for videos */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id, reel.metadata?.storagePath); }}
+            className="w-12 h-12 rounded-full bg-white/10 text-red-400/70 hover:text-red-400 hover:bg-red-500/20 border border-white/20 flex items-center justify-center transition-all"
+            title="Delete"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Mobile Actions */}
@@ -266,11 +294,11 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
           </button>
 
           <button
-            onClick={(e) => { e.stopPropagation(); handleShare(); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/70 border border-white/20"
+            onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id, reel.metadata?.storagePath); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-red-400/70 border border-white/20"
           >
-            <Share2 className="w-4 h-4" />
-            <span className="text-sm">Share</span>
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">Delete</span>
           </button>
         </div>
       </div>
@@ -532,11 +560,32 @@ function LoadingState() {
   )
 }
 
+function ErrorState({ error, onRetry }) {
+  return (
+    <div className="h-full w-full flex items-center justify-center p-8">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="w-8 h-8 text-red-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Failed to load reels</h2>
+        <p className="text-gray-400 mb-4">{error}</p>
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Upload Modal Component
 function UploadModal({ isOpen, onClose, onUpload }) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(null) // 'uploading' | 'saving' | 'complete'
   const fileInputRef = useRef(null)
 
   const handleFile = async (file) => {
@@ -549,17 +598,37 @@ function UploadModal({ isOpen, onClose, onUpload }) {
     }
 
     setIsUploading(true)
+    setUploadProgress('processing')
+
     try {
       const metadata = await extractVideoMetadata(file)
-      const objectUrl = URL.createObjectURL(file)
-      const savedEntry = saveVideoMetadata(file, metadata)
       
-      onUpload({ entry: savedEntry, objectUrl, file })
+      // Use the unified uploadVideo function (handles Supabase or localStorage)
+      const result = await uploadVideo(
+        file,
+        { ...metadata, fileName: file.name, fileType: file.type, source: 'uploaded' },
+        setUploadProgress
+      )
+
+      if (result.error) {
+        setError(result.error)
+        setIsUploading(false)
+        setUploadProgress(null)
+        return
+      }
+
+      onUpload({ 
+        entry: result.entry, 
+        objectUrl: result.objectUrl,
+        isSupabaseMode: result.isSupabaseMode 
+      })
       onClose()
     } catch (err) {
+      console.error('Upload error:', err)
       setError('Failed to process video. Please try again.')
     } finally {
       setIsUploading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -573,6 +642,16 @@ function UploadModal({ isOpen, onClose, onUpload }) {
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
     if (file) handleFile(file)
+  }
+
+  const getProgressText = () => {
+    switch (uploadProgress) {
+      case 'processing': return 'Processing video...'
+      case 'uploading': return 'Uploading to cloud...'
+      case 'saving': return 'Saving metadata...'
+      case 'complete': return 'Complete!'
+      default: return 'Processing...'
+    }
   }
 
   if (!isOpen) return null
@@ -590,11 +669,13 @@ function UploadModal({ isOpen, onClose, onUpload }) {
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-            isDragging 
-              ? 'border-pink-500 bg-pink-500/10' 
-              : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            isUploading 
+              ? 'cursor-not-allowed border-gray-700 bg-gray-800/30'
+              : isDragging 
+                ? 'border-pink-500 bg-pink-500/10 cursor-pointer' 
+                : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 cursor-pointer'
           }`}
         >
           <input
@@ -603,12 +684,14 @@ function UploadModal({ isOpen, onClose, onUpload }) {
             accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
             onChange={handleFileSelect}
             className="hidden"
+            disabled={isUploading}
           />
           
           {isUploading ? (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full border-4 border-pink-500/30 border-t-pink-500 animate-spin mb-3" />
-              <p className="text-gray-400">Processing video...</p>
+              <Loader2 className="w-10 h-10 text-pink-500 animate-spin mb-3" />
+              <p className="text-white font-medium mb-1">{getProgressText()}</p>
+              <p className="text-gray-500 text-sm">Please wait...</p>
             </div>
           ) : (
             <>
@@ -631,7 +714,8 @@ function UploadModal({ isOpen, onClose, onUpload }) {
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors"
+            disabled={isUploading}
+            className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -723,6 +807,8 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
   const [videoDevices, setVideoDevices] = useState([])
   const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0)
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveProgress, setSaveProgress] = useState(null)
   
   const videoRef = useRef(null)
   const previewVideoRef = useRef(null)
@@ -888,18 +974,42 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
   const acceptRecording = async () => {
     if (!recordedBlob) return
 
-    // Get duration from preview video
-    const duration = previewVideoRef.current?.duration || timer
+    setIsSaving(true)
+    setSaveProgress('processing')
 
-    const entry = saveRecordedVideoMetadata(recordedBlob, {
-      duration,
-      width: 0,
-      height: 0
-    })
+    try {
+      // Get duration from preview video
+      const duration = previewVideoRef.current?.duration || timer
 
-    onRecorded({ entry, objectUrl: recordedUrl, blob: recordedBlob })
-    setRecordedUrl(null) // Don't revoke, it's being used
-    onClose()
+      // Use the unified uploadVideo function
+      const result = await uploadVideo(
+        recordedBlob,
+        { duration, width: 0, height: 0, source: 'recorded' },
+        setSaveProgress
+      )
+
+      if (result.error) {
+        setError(result.error)
+        setIsSaving(false)
+        setSaveProgress(null)
+        return
+      }
+
+      onRecorded({ 
+        entry: result.entry, 
+        objectUrl: result.objectUrl,
+        isSupabaseMode: result.isSupabaseMode 
+      })
+      
+      setRecordedUrl(null) // Don't revoke if local mode, it's being used
+      onClose()
+    } catch (err) {
+      console.error('Save error:', err)
+      setError('Failed to save recording. Please try again.')
+    } finally {
+      setIsSaving(false)
+      setSaveProgress(null)
+    }
   }
 
   // Discard recording
@@ -936,6 +1046,16 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
     const mins = Math.floor(secs / 60)
     const seconds = secs % 60
     return `${mins}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  const getSaveProgressText = () => {
+    switch (saveProgress) {
+      case 'processing': return 'Processing...'
+      case 'uploading': return 'Uploading to cloud...'
+      case 'saving': return 'Saving...'
+      case 'complete': return 'Complete!'
+      default: return 'Saving...'
+    }
   }
 
   if (!isOpen) return null
@@ -1093,17 +1213,28 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
             <div className="flex gap-3">
               <button
                 onClick={discardRecording}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                disabled={isSaving}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
                 Discard
               </button>
               <button
                 onClick={acceptRecording}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors"
+                disabled={isSaving}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
               >
-                <Check className="w-4 h-4" />
-                Save to Reels
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {getSaveProgressText()}
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Save to Reels
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -1118,38 +1249,60 @@ export default function ReelsPage() {
   const [reels, setReels] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [mounted, setMounted] = useState(false)
+  const [isSupabaseMode, setIsSupabaseMode] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showRecordModal, setShowRecordModal] = useState(false)
   const [showRelinkModal, setShowRelinkModal] = useState(false)
   const [relinkTarget, setRelinkTarget] = useState(null)
-  const [videoObjectUrls, setVideoObjectUrls] = useState({}) // id -> objectUrl
+  const [videoObjectUrls, setVideoObjectUrls] = useState({}) // id -> objectUrl (for local mode)
   const [isMuted, setIsMuted] = useState(true)
   const containerRef = useRef(null)
 
+  // Load reels function
+  const loadReels = useCallback(async () => {
+    setIsLoading(true)
+    setLoadError(null)
+    
+    try {
+      const result = await getAllReelItems(50)
+      setReels(result.reels)
+      setIsSupabaseMode(result.isSupabaseMode)
+    } catch (error) {
+      console.error('Failed to load reels:', error)
+      setLoadError('Failed to load reels. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     setMounted(true)
-    // Mark existing videos as needing relink on page load
-    markVideosAsNeedingRelink()
+    // Only mark as needing relink in local mode (checked later)
   }, [])
 
   useEffect(() => {
     if (!mounted) return
 
-    async function loadReels() {
-      setIsLoading(true)
-      try {
-        const items = await getAllReelItems(50)
-        setReels(items)
-      } catch (error) {
-        console.error('Failed to load reels:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    // Mark videos as needing relink ONLY if not in Supabase mode
+    // We do this after loading to know the mode
+    loadReels().then(() => {
+      // After loading, if NOT in Supabase mode, mark for relink
+      // This is handled inside the loadReels result
+    })
+  }, [mounted, loadReels])
 
-    loadReels()
-  }, [mounted])
+  // After we know the mode, mark for relink if local
+  useEffect(() => {
+    if (!mounted || isLoading) return
+    
+    if (!isSupabaseMode) {
+      markVideosAsNeedingRelink()
+      // Reload to get updated needsRelink flags
+      loadReels()
+    }
+  }, [mounted, isSupabaseMode, isLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -1224,30 +1377,34 @@ export default function ReelsPage() {
     }
   }
 
-  const handleUpload = ({ entry, objectUrl }) => {
-    // Add the new object URL to state
-    setVideoObjectUrls(prev => ({ ...prev, [entry.id]: objectUrl }))
+  const handleUpload = ({ entry, objectUrl, isSupabaseMode: uploadMode }) => {
+    // In local mode, store the objectUrl for playback
+    if (!uploadMode && objectUrl) {
+      setVideoObjectUrls(prev => ({ ...prev, [entry.id]: objectUrl }))
+    }
     
     // Reload reels
-    getAllReelItems(50).then(items => {
-      setReels(items)
+    loadReels().then(() => {
       setCurrentIndex(0) // Go to the new video
     })
     
-    toast({ type: 'success', message: 'Video uploaded!' })
+    const modeText = uploadMode ? '☁️ Uploaded to cloud!' : 'Video added!'
+    toast({ type: 'success', message: modeText })
   }
 
-  const handleRecorded = ({ entry, objectUrl }) => {
-    // Add the new object URL to state
-    setVideoObjectUrls(prev => ({ ...prev, [entry.id]: objectUrl }))
+  const handleRecorded = ({ entry, objectUrl, isSupabaseMode: recordMode }) => {
+    // In local mode, store the objectUrl for playback
+    if (!recordMode && objectUrl) {
+      setVideoObjectUrls(prev => ({ ...prev, [entry.id]: objectUrl }))
+    }
     
     // Reload reels
-    getAllReelItems(50).then(items => {
-      setReels(items)
+    loadReels().then(() => {
       setCurrentIndex(0) // Go to the new recorded video
     })
     
-    toast({ type: 'success', message: 'Recorded reel added ✓' })
+    const modeText = recordMode ? '☁️ Recorded & saved to cloud!' : 'Recorded reel added ✓'
+    toast({ type: 'success', message: modeText })
   }
 
   const handleRelink = (videoId, objectUrl) => {
@@ -1257,7 +1414,7 @@ export default function ReelsPage() {
     toast({ type: 'success', message: 'Video re-linked!' })
     
     // Reload to update the needsRelink flag
-    getAllReelItems(50).then(items => setReels(items))
+    loadReels()
   }
 
   const handleRelinkRequest = (videoId) => {
@@ -1266,9 +1423,15 @@ export default function ReelsPage() {
     setShowRelinkModal(true)
   }
 
-  const handleDelete = (videoId) => {
-    deleteVideoMetadata(videoId)
-    // Revoke object URL if exists
+  const handleDelete = async (videoId, storagePath) => {
+    const success = await deleteVideo(videoId, storagePath, isSupabaseMode)
+    
+    if (!success && isSupabaseMode) {
+      toast({ type: 'error', message: 'Failed to delete video' })
+      return
+    }
+
+    // Revoke object URL if exists (local mode)
     if (videoObjectUrls[videoId]) {
       URL.revokeObjectURL(videoObjectUrls[videoId])
       setVideoObjectUrls(prev => {
@@ -1277,13 +1440,14 @@ export default function ReelsPage() {
         return updated
       })
     }
+    
     // Reload reels
-    getAllReelItems(50).then(items => {
-      setReels(items)
-      if (currentIndex >= items.length) {
-        setCurrentIndex(Math.max(0, items.length - 1))
+    loadReels().then(() => {
+      if (currentIndex >= reels.length - 1) {
+        setCurrentIndex(Math.max(0, reels.length - 2))
       }
     })
+    
     toast({ type: 'info', message: 'Video deleted' })
   }
 
@@ -1307,8 +1471,15 @@ export default function ReelsPage() {
 
   return (
     <div className="h-[calc(100vh-80px)] md:h-screen bg-black relative overflow-hidden -m-4 md:-m-6">
+      {/* Local Mode Banner */}
+      {!isSupabaseMode && !isLoading && (
+        <LocalModeBanner />
+      )}
+
       {isLoading ? (
         <LoadingState />
+      ) : loadError ? (
+        <ErrorState error={loadError} onRetry={loadReels} />
       ) : !hasReels ? (
         <EmptyState onUploadClick={() => setShowUploadModal(true)} onRecordClick={() => setShowRecordModal(true)} />
       ) : (
@@ -1354,6 +1525,7 @@ export default function ReelsPage() {
                     onDelete={handleDelete}
                     isMuted={isMuted}
                     onMuteToggle={() => setIsMuted(!isMuted)}
+                    isSupabaseMode={isSupabaseMode}
                   />
                 ) : (
                   <ContentReelCard
