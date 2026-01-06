@@ -154,7 +154,7 @@ export default function SaveBotPage() {
             <div className="space-y-2">
               {result.searchQueries.map((search, idx) => (
                 <div key={idx} className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                  <p className="text-blue-300 text-sm">"{search}"</p>
+                  <p className="text-blue-300 text-sm">&ldquo;{search}&rdquo;</p>
                 </div>
               ))}
             </div>
