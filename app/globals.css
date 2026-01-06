@@ -46,3 +46,117 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Button micro-interactions */
+.btn-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-hover:hover {
+  transform: translateY(-1px);
+}
+.btn-hover:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Chip/tag micro-interactions */
+.chip-hover {
+  transition: all 0.15s ease-out;
+}
+.chip-hover:hover {
+  transform: scale(1.03);
+}
+.chip-hover:active {
+  transform: scale(0.97);
+}
+
+/* Card hover lift effect */
+.card-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Icon button press effect */
+.icon-btn {
+  transition: all 0.15s ease-out;
+}
+.icon-btn:hover {
+  transform: scale(1.08);
+}
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Link underline animation */
+.link-animate {
+  position: relative;
+}
+.link-animate::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153));
+  transition: width 0.25s ease-out;
+}
+.link-animate:hover::after {
+  width: 100%;
+}
+
+/* Sidebar section collapse animation */
+.sidebar-section-content {
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-section-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+.sidebar-section-content.expanded {
+  max-height: 500px;
+  opacity: 1;
+}
+
+/* Chevron rotation animation */
+.chevron-animate {
+  transition: transform 0.2s ease-out;
+}
+.chevron-animate.rotated {
+  transform: rotate(180deg);
+}
+
+/* Focus ring animation */
+.focus-ring-animate {
+  transition: box-shadow 0.2s ease-out;
+}
+.focus-ring-animate:focus {
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  animation: fade-in-up 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
