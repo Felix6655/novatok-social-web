@@ -302,9 +302,110 @@ CREATE POLICY "Users can delete their own DNA profile"
 -- SELECT * FROM public.profiles LIMIT 1;
 -- SELECT * FROM public.reminders LIMIT 1;
 -- SELECT * FROM public.dna_profiles LIMIT 1;
+
+-- =============================================
+-- REELS_VIDEOS TABLE
+-- Stores user video reel metadata
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.reels_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  file_name TEXT,
+  file_type TEXT,
+  file_size BIGINT,
+  duration NUMERIC,
+  width INT,
+  height INT,
+  source TEXT CHECK (source IN ('uploaded', 'recorded')) DEFAULT 'uploaded',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS reels_videos_user_id_idx ON public.reels_videos(user_id);
+CREATE INDEX IF NOT EXISTS reels_videos_created_at_idx ON public.reels_videos(created_at DESC);
+
+-- Enable Row Level Security
+ALTER TABLE public.reels_videos ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for re-running)
+DROP POLICY IF EXISTS "Users can view their own reels" ON public.reels_videos;
+DROP POLICY IF EXISTS "Users can insert their own reels" ON public.reels_videos;
+DROP POLICY IF EXISTS "Users can update their own reels" ON public.reels_videos;
+DROP POLICY IF EXISTS "Users can delete their own reels" ON public.reels_videos;
+
+-- Policy: Users can SELECT their own reels only
+CREATE POLICY "Users can view their own reels"
+  ON public.reels_videos
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- Policy: Users can INSERT their own reels only
+CREATE POLICY "Users can insert their own reels"
+  ON public.reels_videos
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can UPDATE their own reels only
+CREATE POLICY "Users can update their own reels"
+  ON public.reels_videos
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can DELETE their own reels only
+CREATE POLICY "Users can delete their own reels"
+  ON public.reels_videos
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
 ```
 
-### 4. Configure Authentication
+### 4. Create Storage Bucket for Reels
+
+In Supabase dashboard:
+1. Go to **Storage** → **New bucket**
+2. Create a bucket named `reels`
+3. Set it as **Private** (not public)
+4. Configure storage policies in **Storage** → **Policies**:
+
+```sql
+-- Storage policies for reels bucket
+-- Run this in SQL Editor after creating the bucket
+
+-- Allow authenticated users to upload their own reels
+CREATE POLICY "Users can upload reels"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'reels' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to read their own reels
+CREATE POLICY "Users can read own reels"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'reels' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to delete their own reels
+CREATE POLICY "Users can delete own reels"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'reels' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+```
+
+### 5. Configure Authentication
 
 In Supabase dashboard:
 1. Go to **Authentication** → **Providers**
