@@ -1281,26 +1281,43 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
             </div>
           ) : stage === 'preview' ? (
             // Preview stage
-            <div className="relative aspect-[9/16] max-h-[400px] bg-black" onClick={togglePreviewPlay}>
-              <video
-                ref={previewVideoRef}
-                src={recordedUrl}
-                className="w-full h-full object-contain"
-                loop
-                playsInline
-                onPlay={() => setIsPreviewPlaying(true)}
-                onPause={() => setIsPreviewPlaying(false)}
-              />
-              {!isPreviewPlaying && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Play className="w-8 h-8 text-white ml-1" />
+            <div>
+              <div className="relative aspect-[9/16] max-h-[350px] bg-black" onClick={togglePreviewPlay}>
+                <video
+                  ref={previewVideoRef}
+                  src={recordedUrl}
+                  className="w-full h-full object-contain"
+                  loop
+                  playsInline
+                  onPlay={() => setIsPreviewPlaying(true)}
+                  onPause={() => setIsPreviewPlaying(false)}
+                />
+                {!isPreviewPlaying && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white ml-1" />
+                    </div>
                   </div>
+                )}
+                {/* Duration badge */}
+                <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/60 text-white text-sm font-medium">
+                  {formatTimer(timer)}
                 </div>
-              )}
-              {/* Duration badge */}
-              <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/60 text-white text-sm font-medium">
-                {formatTimer(timer)}
+              </div>
+              {/* Caption Input */}
+              <div className="p-4 border-t border-gray-800">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Caption <span className="text-gray-600">(optional, max 120 chars)</span>
+                </label>
+                <input
+                  type="text"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value.slice(0, 120))}
+                  placeholder="Add a caption to your video..."
+                  className="w-full px-4 py-2 rounded-xl bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500/50 text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <p className="text-xs text-gray-600 mt-1 text-right">{caption.length}/120</p>
               </div>
             </div>
           ) : (
