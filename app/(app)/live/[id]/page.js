@@ -136,7 +136,7 @@ export default function LiveViewerPage({ params }) {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Live Stream Not Found</h2>
           <p className="text-gray-400 mb-4">
-            This live stream may have ended or doesn't exist.
+            This live stream may have ended or doesn&apos;t exist.
           </p>
           <Link
             href="/live"
