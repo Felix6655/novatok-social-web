@@ -59,12 +59,36 @@ const MOOD_EMOJI = {
   neutral: '💭'
 }
 
-function MemoryCard({ memory }) {
+function MemoryCard({ memory, onSaveToggle }) {
   const colors = TYPE_COLORS[memory.type]
   const Icon = TYPE_ICONS[memory.type]
+  const [saved, setSaved] = useState(false)
+  
+  useEffect(() => {
+    setSaved(isSaved(memory.type, memory.id))
+  }, [memory.type, memory.id])
+  
+  const handleSaveToggle = () => {
+    if (saved) {
+      unsaveItem(memory.type, memory.id)
+      setSaved(false)
+      onSaveToggle?.(false)
+    } else {
+      saveItem({
+        type: memory.type,
+        sourceId: memory.id,
+        title: memory.title,
+        summary: memory.summary,
+        metadata: memory.metadata,
+        createdAt: memory.createdAt
+      })
+      setSaved(true)
+      onSaveToggle?.(true)
+    }
+  }
   
   return (
-    <div className={`bg-[hsl(0,0%,7%)] rounded-xl border ${colors.border} p-4 card-hover`}>
+    <div className={`bg-[hsl(0,0%,7%)] rounded-xl border ${colors.border} p-4 card-hover group`}>
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center flex-shrink-0`}>
@@ -76,9 +100,22 @@ function MemoryCard({ memory }) {
           {/* Header */}
           <div className="flex items-center justify-between gap-2 mb-1">
             <h3 className="text-sm font-medium text-white truncate">{memory.title}</h3>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.badge} flex-shrink-0`}>
-              {TYPE_LABELS[memory.type]}
-            </span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.badge}`}>
+                {TYPE_LABELS[memory.type]}
+              </span>
+              <button
+                onClick={handleSaveToggle}
+                className={`p-1 rounded-md transition-all ${
+                  saved 
+                    ? 'text-amber-400 hover:text-amber-300' 
+                    : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-amber-400'
+                }`}
+                title={saved ? 'Remove from saved' : 'Save'}
+              >
+                <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-current' : ''}`} />
+              </button>
+            </div>
           </div>
           
           {/* Summary */}
