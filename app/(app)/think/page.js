@@ -57,10 +57,14 @@ export default function ThinkPage() {
       const wasUnlocked = isQuietVoicesUnlocked()
       
       // Save the thought
-      await saveThought({
+      const savedThought = await saveThought({
         text: text.trim(),
         mood: selectedMood || 'neutral'
       })
+      
+      // Store last thought for save option
+      setLastThought(savedThought)
+      setIsLastSaved(false)
 
       // Check if this is the first thought (unlock Quiet Voices)
       if (!wasUnlocked) {
