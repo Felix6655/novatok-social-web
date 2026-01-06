@@ -8,7 +8,7 @@ import {
   CheckCircle, XCircle, Play, Pause, Volume2, VolumeX,
   Upload, Film, AlertCircle, RefreshCw, Trash2,
   Video, Mic, MicOff, Circle, Square, RotateCcw, Check, X,
-  Info, Loader2
+  Info, Loader2, Heart, Flame, Smile
 } from 'lucide-react'
 import { 
   getAllReelItems,
@@ -32,8 +32,16 @@ import {
   MAX_RECORDING_DURATION,
   ACCEPTED_EXTENSIONS,
   isMediaRecorderSupported,
-  getVideoDevices
+  getVideoDevices,
+  updateVideoCaption
 } from '@/lib/reels/storage'
+import {
+  REACTION_TYPES,
+  REACTION_EMOJIS,
+  getReelReactions,
+  toggleReaction,
+  formatReactionCount
+} from '@/lib/reels/reactions'
 import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
 import { useToast } from '@/components/ui/ToastProvider'
 
