@@ -1,21 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { User, Settings, Camera, MapPin, Calendar, Link as LinkIcon, Edit3, Lightbulb, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { getProfile, getDisplayName, getBio } from '@/lib/profile/storage'
 import { getThoughtCount } from '@/lib/think/storage'
 
 export default function ProfilePage() {
-  const [mounted, setMounted] = useState(false)
-  const [profile, setProfile] = useState(null)
-  const [thoughtCount, setThoughtCount] = useState(0)
+  const [profileData, setProfileData] = useState({ profile: null, thoughtCount: 0, mounted: false })
 
   useEffect(() => {
-    setMounted(true)
-    setProfile(getProfile())
-    setThoughtCount(getThoughtCount())
+    // Load data only on client side to prevent hydration mismatch
+    setProfileData({
+      profile: getProfile(),
+      thoughtCount: getThoughtCount(),
+      mounted: true
+    })
   }, [])
+
+  const { profile, thoughtCount, mounted } = profileData
 
   // Prevent hydration mismatch
   if (!mounted) {
