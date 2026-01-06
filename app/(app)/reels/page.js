@@ -357,6 +357,9 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
             <Share2 className="w-5 h-5" />
           </button>
 
+          {/* Reactions */}
+          <ReactionButtons reelId={reel.id} onReact={onReact} />
+
           {/* Delete button for videos */}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id, reel.metadata?.storagePath); }}
