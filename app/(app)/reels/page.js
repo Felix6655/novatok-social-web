@@ -1561,6 +1561,14 @@ export default function ReelsPage() {
     }
   }
 
+  const handleReaction = (added, type) => {
+    const emoji = REACTION_EMOJIS[type]
+    toast({ 
+      type: 'info', 
+      message: added ? `Reacted ${emoji}` : 'Reaction removed' 
+    })
+  }
+
   const handleUpload = ({ entry, objectUrl, isSupabaseMode: uploadMode }) => {
     // In local mode, store the objectUrl for playback
     if (!uploadMode && objectUrl) {
