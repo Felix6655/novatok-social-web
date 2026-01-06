@@ -164,7 +164,7 @@ function Sidebar({ pathname }) {
     <aside className="hidden md:flex flex-col w-64 bg-[hsl(0,0%,5%)] border-r border-gray-800 fixed h-full">
       {/* Logo */}
       <div className="p-4 border-b border-gray-800">
-        <Link href="/think" className="flex items-center gap-3 group">
+        <Link href="/home" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
             <Sparkles className="w-5 h-5 text-white transition-transform duration-300 group-hover:scale-110" />
           </div>
