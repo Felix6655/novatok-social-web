@@ -1304,17 +1304,26 @@ export default function ReelsPage() {
       {isLoading ? (
         <LoadingState />
       ) : !hasReels ? (
-        <EmptyState onUploadClick={() => setShowUploadModal(true)} />
+        <EmptyState onUploadClick={() => setShowUploadModal(true)} onRecordClick={() => setShowRecordModal(true)} />
       ) : (
         <>
-          {/* Upload Button */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="absolute top-4 left-4 md:top-6 md:left-6 z-10 flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-medium text-sm hover:opacity-90 transition-opacity"
-          >
-            <Upload className="w-4 h-4" />
-            <span className="hidden md:inline">Upload</span>
-          </button>
+          {/* Upload/Record Buttons */}
+          <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10 flex items-center gap-2">
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-medium text-sm hover:opacity-90 transition-opacity"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden md:inline">Upload</span>
+            </button>
+            <button
+              onClick={() => setShowRecordModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-500 text-white font-medium text-sm hover:bg-red-600 transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              <span className="hidden md:inline">Record</span>
+            </button>
+          </div>
 
           {/* Reels Container */}
           <div
