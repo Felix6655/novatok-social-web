@@ -44,6 +44,33 @@ export default function TarotPage() {
     toast({ type: 'success', message: 'Your cards have been drawn' })
   }
 
+  const handleSaveReading = () => {
+    if (!reading) return
+    
+    const cardNames = reading.cards.map(c => c.name).join(', ')
+    const spreadLabel = reading.spread === '3-card' ? 'Past/Present/Future' : 'Single Card'
+    
+    saveItem({
+      type: 'tarot',
+      sourceId: reading.id,
+      title: `Tarot Reading: ${spreadLabel}`,
+      summary: reading.question.length > 100 
+        ? reading.question.substring(0, 97) + '...'
+        : reading.question,
+      metadata: {
+        question: reading.question,
+        cards: reading.cards,
+        cardNames,
+        spread: reading.spread,
+        overallInterpretation: reading.overallInterpretation
+      },
+      createdAt: reading.generatedAt
+    })
+    
+    setIsReadingSaved(true)
+    toast({ type: 'success', message: 'Saved ✓' })
+  }
+
   if (!mounted) {
     return (
       <div className="space-y-6 animate-pulse">
