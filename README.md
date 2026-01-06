@@ -181,12 +181,127 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- =============================================
+-- REMINDERS TABLE
+-- Stores user reminders/appointments
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.reminders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  remind_at TIMESTAMPTZ NOT NULL,
+  notes TEXT,
+  dismissed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS reminders_user_id_idx ON public.reminders(user_id);
+CREATE INDEX IF NOT EXISTS reminders_remind_at_idx ON public.reminders(remind_at);
+CREATE INDEX IF NOT EXISTS reminders_dismissed_idx ON public.reminders(dismissed);
+
+-- Enable Row Level Security
+ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for re-running)
+DROP POLICY IF EXISTS "Users can view their own reminders" ON public.reminders;
+DROP POLICY IF EXISTS "Users can insert their own reminders" ON public.reminders;
+DROP POLICY IF EXISTS "Users can update their own reminders" ON public.reminders;
+DROP POLICY IF EXISTS "Users can delete their own reminders" ON public.reminders;
+
+-- Policy: Users can SELECT their own reminders only
+CREATE POLICY "Users can view their own reminders"
+  ON public.reminders
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- Policy: Users can INSERT their own reminders only
+CREATE POLICY "Users can insert their own reminders"
+  ON public.reminders
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can UPDATE their own reminders only
+CREATE POLICY "Users can update their own reminders"
+  ON public.reminders
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can DELETE their own reminders only
+CREATE POLICY "Users can delete their own reminders"
+  ON public.reminders
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- =============================================
+-- DNA_PROFILES TABLE (OPTIONAL)
+-- Stores optional DNA compatibility data
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.dna_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  provider TEXT,
+  kit_id TEXT,
+  consent BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create index
+CREATE INDEX IF NOT EXISTS dna_profiles_user_id_idx ON public.dna_profiles(user_id);
+
+-- Enable Row Level Security
+ALTER TABLE public.dna_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (for re-running)
+DROP POLICY IF EXISTS "Users can view their own DNA profile" ON public.dna_profiles;
+DROP POLICY IF EXISTS "Users can insert their own DNA profile" ON public.dna_profiles;
+DROP POLICY IF EXISTS "Users can update their own DNA profile" ON public.dna_profiles;
+DROP POLICY IF EXISTS "Users can delete their own DNA profile" ON public.dna_profiles;
+
+-- Policy: Users can SELECT their own DNA profile only
+CREATE POLICY "Users can view their own DNA profile"
+  ON public.dna_profiles
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- Policy: Users can INSERT their own DNA profile only
+CREATE POLICY "Users can insert their own DNA profile"
+  ON public.dna_profiles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can UPDATE their own DNA profile only
+CREATE POLICY "Users can update their own DNA profile"
+  ON public.dna_profiles
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can DELETE their own DNA profile only
+CREATE POLICY "Users can delete their own DNA profile"
+  ON public.dna_profiles
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- =============================================
 -- VERIFICATION: Check tables were created
 -- =============================================
 
 -- Run these to verify (optional)
 -- SELECT * FROM public.thoughts LIMIT 1;
 -- SELECT * FROM public.profiles LIMIT 1;
+-- SELECT * FROM public.reminders LIMIT 1;
+-- SELECT * FROM public.dna_profiles LIMIT 1;
 ```
 
 ### 4. Configure Authentication
