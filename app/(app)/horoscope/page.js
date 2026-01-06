@@ -13,10 +13,18 @@ export default function HoroscopePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [reading, setReading] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReadingSaved, setIsReadingSaved] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Check if current reading is saved when it changes
+  useEffect(() => {
+    if (reading) {
+      setIsReadingSaved(isSaved('horoscope', reading.id))
+    }
+  }, [reading])
 
   const handleGenerate = async () => {
     setIsLoading(true)
