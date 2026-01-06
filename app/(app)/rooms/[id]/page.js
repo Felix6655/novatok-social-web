@@ -563,6 +563,7 @@ export default function RoomPage({ params }) {
           serverUrl={liveKitUrl}
           onLeave={handleLeave}
           onCopyInvite={handleCopyInvite}
+          onToast={toast}
         />
       </div>
     )
