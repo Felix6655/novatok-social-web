@@ -1424,6 +1424,13 @@ export default function ReelsPage() {
         onUpload={handleUpload}
       />
 
+      {/* Record Modal */}
+      <RecordModal
+        isOpen={showRecordModal}
+        onClose={() => setShowRecordModal(false)}
+        onRecorded={handleRecorded}
+      />
+
       {/* Relink Modal */}
       <RelinkModal
         isOpen={showRelinkModal}
