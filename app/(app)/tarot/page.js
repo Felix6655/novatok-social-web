@@ -13,10 +13,18 @@ export default function TarotPage() {
   const [selectedSpread, setSelectedSpread] = useState('1-card')
   const [reading, setReading] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReadingSaved, setIsReadingSaved] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Check if current reading is saved when it changes
+  useEffect(() => {
+    if (reading) {
+      setIsReadingSaved(isSaved('tarot', reading.id))
+    }
+  }, [reading])
 
   const handleDraw = async () => {
     if (!question.trim()) {
