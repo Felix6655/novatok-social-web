@@ -42,6 +42,27 @@ export default function ThinkPage() {
     setSelectedMood(prev => prev === moodId ? null : moodId)
   }, [])
 
+  // Handle saving last thought
+  const handleSaveLastThought = () => {
+    if (!lastThought) return
+    
+    const moodLabel = MOODS.find(m => m.id === lastThought.mood)?.label || 'Thought'
+    
+    saveItem({
+      type: 'think',
+      sourceId: lastThought.id,
+      title: `${moodLabel} moment`,
+      summary: lastThought.text.length > 100 
+        ? lastThought.text.substring(0, 97) + '...' 
+        : lastThought.text,
+      metadata: { mood: lastThought.mood, fullText: lastThought.text },
+      createdAt: lastThought.created_at
+    })
+    
+    setIsLastSaved(true)
+    toast({ type: 'success', message: 'Saved ✓' })
+  }
+
   // Handle release button click
   const handleRelease = async () => {
     // Validation
