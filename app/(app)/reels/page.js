@@ -6,7 +6,8 @@ import {
   Lightbulb, Sparkles, Star, Brain, Bookmark, 
   ExternalLink, Share2, ChevronUp, ChevronDown,
   CheckCircle, XCircle, Play, Pause, Volume2, VolumeX,
-  Upload, Film, AlertCircle, RefreshCw, Trash2
+  Upload, Film, AlertCircle, RefreshCw, Trash2,
+  Video, Mic, MicOff, Circle, Square, RotateCcw, Check, X
 } from 'lucide-react'
 import { 
   getAllReelItems,
@@ -21,13 +22,17 @@ import {
   validateVideoFile,
   extractVideoMetadata,
   saveVideoMetadata,
+  saveRecordedVideoMetadata,
   deleteVideoMetadata,
   markVideosAsNeedingRelink,
   markVideoAsRelinked,
   formatDuration,
   formatFileSize,
   MAX_FILE_SIZE_MB,
-  ACCEPTED_EXTENSIONS
+  MAX_RECORDING_DURATION,
+  ACCEPTED_EXTENSIONS,
+  isMediaRecorderSupported,
+  getVideoDevices
 } from '@/lib/reels/storage'
 import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
 import { useToast } from '@/components/ui/ToastProvider'
