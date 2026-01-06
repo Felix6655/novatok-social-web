@@ -698,9 +698,11 @@ function UploadModal({ isOpen, onClose, onUpload }) {
   const [error, setError] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(null) // 'uploading' | 'saving' | 'complete'
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [caption, setCaption] = useState('')
   const fileInputRef = useRef(null)
 
-  const handleFile = async (file) => {
+  const handleFileSelected = (file) => {
     setError(null)
     
     const validation = validateVideoFile(file)
@@ -708,17 +710,23 @@ function UploadModal({ isOpen, onClose, onUpload }) {
       setError(validation.error)
       return
     }
+    
+    setSelectedFile(file)
+  }
+
+  const handleUploadConfirm = async () => {
+    if (!selectedFile) return
 
     setIsUploading(true)
     setUploadProgress('processing')
 
     try {
-      const metadata = await extractVideoMetadata(file)
+      const metadata = await extractVideoMetadata(selectedFile)
       
       // Use the unified uploadVideo function (handles Supabase or localStorage)
       const result = await uploadVideo(
-        file,
-        { ...metadata, fileName: file.name, fileType: file.type, source: 'uploaded' },
+        selectedFile,
+        { ...metadata, fileName: selectedFile.name, fileType: selectedFile.type, source: 'uploaded', caption: caption.trim() },
         setUploadProgress
       )
 
@@ -734,7 +742,7 @@ function UploadModal({ isOpen, onClose, onUpload }) {
         objectUrl: result.objectUrl,
         isSupabaseMode: result.isSupabaseMode 
       })
-      onClose()
+      handleClose()
     } catch (err) {
       console.error('Upload error:', err)
       setError('Failed to process video. Please try again.')
@@ -742,6 +750,13 @@ function UploadModal({ isOpen, onClose, onUpload }) {
       setIsUploading(false)
       setUploadProgress(null)
     }
+  }
+
+  const handleClose = () => {
+    setSelectedFile(null)
+    setCaption('')
+    setError(null)
+    onClose()
   }
 
   const handleDrop = (e) => {
