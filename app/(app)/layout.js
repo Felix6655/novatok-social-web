@@ -12,6 +12,7 @@ import { ToastProvider, useToast } from '@/components/ui/ToastProvider'
 import ReminderPopup from '@/components/ReminderPopup'
 import { supabase, getSession, signOut } from '@/lib/supabase/client'
 import { isDevelopment } from '@/lib/supabase/health'
+import ConstellationBackground from '@/components/ui/ConstellationBackground'
 
 // External link - PERMANENT: DO NOT REMOVE OR GATE BEHIND FLAGS
 const NOVATOK_MUSIC_URL = 'https://cosmic-player-1.preview.emergentagent.com'
