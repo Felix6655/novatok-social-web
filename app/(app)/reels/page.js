@@ -701,6 +701,412 @@ function RelinkModal({ isOpen, videoId, fileName, onClose, onRelink }) {
   )
 }
 
+// Recording Modal Component
+function RecordModal({ isOpen, onClose, onRecorded }) {
+  const [stage, setStage] = useState('setup') // setup | recording | preview
+  const [error, setError] = useState(null)
+  const [stream, setStream] = useState(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordedBlob, setRecordedBlob] = useState(null)
+  const [recordedUrl, setRecordedUrl] = useState(null)
+  const [timer, setTimer] = useState(0)
+  const [isMicEnabled, setIsMicEnabled] = useState(true)
+  const [videoDevices, setVideoDevices] = useState([])
+  const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0)
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
+  
+  const videoRef = useRef(null)
+  const previewVideoRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const chunksRef = useRef([])
+  const timerIntervalRef = useRef(null)
+  const streamRef = useRef(null)
+
+  // Check for MediaRecorder support
+  const isSupported = isMediaRecorderSupported()
+
+  // Initialize camera
+  const initCamera = useCallback(async (deviceId = null) => {
+    try {
+      // Stop existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+      }
+
+      const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+        audio: isMicEnabled
+      }
+
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints)
+      streamRef.current = newStream
+      setStream(newStream)
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream
+      }
+
+      // Get available devices
+      const devices = await getVideoDevices()
+      setVideoDevices(devices)
+      
+      setError(null)
+      setStage('setup')
+    } catch (err) {
+      console.error('Camera error:', err)
+      if (err.name === 'NotAllowedError') {
+        setError('Camera permission denied. Please allow camera access to record.')
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found. Please connect a camera to record.')
+      } else {
+        setError('Failed to access camera. Please try again.')
+      }
+    }
+  }, [isMicEnabled])
+
+  // Initialize on open
+  useEffect(() => {
+    if (isOpen && isSupported) {
+      initCamera()
+    }
+    return () => {
+      cleanup()
+    }
+  }, [isOpen, isSupported, initCamera])
+
+  // Update audio track when mic toggle changes
+  useEffect(() => {
+    if (stream && !isRecording) {
+      const audioTracks = stream.getAudioTracks()
+      audioTracks.forEach(track => {
+        track.enabled = isMicEnabled
+      })
+    }
+  }, [isMicEnabled, stream, isRecording])
+
+  // Cleanup function
+  const cleanup = () => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+    }
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl)
+    }
+    setStream(null)
+    setIsRecording(false)
+    setRecordedBlob(null)
+    setRecordedUrl(null)
+    setTimer(0)
+    setStage('setup')
+    chunksRef.current = []
+  }
+
+  // Start recording
+  const startRecording = () => {
+    if (!stream) return
+
+    chunksRef.current = []
+    
+    const options = { mimeType: 'video/webm;codecs=vp9,opus' }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options.mimeType = 'video/webm'
+    }
+
+    try {
+      const recorder = new MediaRecorder(stream, options)
+      mediaRecorderRef.current = recorder
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
+        }
+      }
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+        const url = URL.createObjectURL(blob)
+        setRecordedBlob(blob)
+        setRecordedUrl(url)
+        setStage('preview')
+        
+        // Stop the camera stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop())
+        }
+      }
+
+      recorder.start(1000) // Collect data every second
+      setIsRecording(true)
+      setStage('recording')
+      setTimer(0)
+
+      // Start timer
+      timerIntervalRef.current = setInterval(() => {
+        setTimer(prev => {
+          if (prev >= MAX_RECORDING_DURATION - 1) {
+            stopRecording()
+            return MAX_RECORDING_DURATION
+          }
+          return prev + 1
+        })
+      }, 1000)
+    } catch (err) {
+      setError('Failed to start recording. Please try again.')
+    }
+  }
+
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+      }
+    }
+  }
+
+  // Switch camera
+  const switchCamera = async () => {
+    if (videoDevices.length <= 1) return
+    
+    const nextIndex = (currentDeviceIndex + 1) % videoDevices.length
+    setCurrentDeviceIndex(nextIndex)
+    await initCamera(videoDevices[nextIndex].deviceId)
+  }
+
+  // Accept recording
+  const acceptRecording = async () => {
+    if (!recordedBlob) return
+
+    // Get duration from preview video
+    const duration = previewVideoRef.current?.duration || timer
+
+    const entry = saveRecordedVideoMetadata(recordedBlob, {
+      duration,
+      width: 0,
+      height: 0
+    })
+
+    onRecorded({ entry, objectUrl: recordedUrl, blob: recordedBlob })
+    setRecordedUrl(null) // Don't revoke, it's being used
+    onClose()
+  }
+
+  // Discard recording
+  const discardRecording = () => {
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl)
+    }
+    setRecordedBlob(null)
+    setRecordedUrl(null)
+    setTimer(0)
+    initCamera()
+  }
+
+  // Toggle preview playback
+  const togglePreviewPlay = () => {
+    if (!previewVideoRef.current) return
+    
+    if (isPreviewPlaying) {
+      previewVideoRef.current.pause()
+    } else {
+      previewVideoRef.current.play()
+    }
+    setIsPreviewPlaying(!isPreviewPlaying)
+  }
+
+  // Handle close
+  const handleClose = () => {
+    cleanup()
+    onClose()
+  }
+
+  // Format timer
+  const formatTimer = (secs) => {
+    const mins = Math.floor(secs / 60)
+    const seconds = secs % 60
+    return `${mins}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-[hsl(0,0%,9%)] rounded-2xl border border-gray-800 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <h2 className="text-lg font-bold text-white">
+            {stage === 'setup' && 'Record Video'}
+            {stage === 'recording' && 'Recording...'}
+            {stage === 'preview' && 'Preview'}
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="relative">
+          {!isSupported ? (
+            // Not supported state
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-2">Recording not supported</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Your browser does not support video recording. Please use Upload Video instead.
+              </p>
+              <button
+                onClick={handleClose}
+                className="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : error ? (
+            // Error state
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-2">Camera Error</h3>
+              <p className="text-gray-400 text-sm mb-4">{error}</p>
+              <button
+                onClick={() => initCamera()}
+                className="px-4 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : stage === 'preview' ? (
+            // Preview stage
+            <div className="relative aspect-[9/16] max-h-[400px] bg-black" onClick={togglePreviewPlay}>
+              <video
+                ref={previewVideoRef}
+                src={recordedUrl}
+                className="w-full h-full object-contain"
+                loop
+                playsInline
+                onPlay={() => setIsPreviewPlaying(true)}
+                onPause={() => setIsPreviewPlaying(false)}
+              />
+              {!isPreviewPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  </div>
+                </div>
+              )}
+              {/* Duration badge */}
+              <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/60 text-white text-sm font-medium">
+                {formatTimer(timer)}
+              </div>
+            </div>
+          ) : (
+            // Setup/Recording stage - Live preview
+            <div className="relative aspect-[9/16] max-h-[400px] bg-black">
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover transform scale-x-[-1]"
+              />
+              
+              {/* Timer overlay */}
+              {stage === 'recording' && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/90 text-white">
+                  <Circle className="w-3 h-3 fill-current animate-pulse" />
+                  <span className="font-mono font-bold">{formatTimer(timer)}</span>
+                  <span className="text-xs text-white/70">/ {formatTimer(MAX_RECORDING_DURATION)}</span>
+                </div>
+              )}
+
+              {/* Controls overlay */}
+              {stage === 'setup' && (
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  {/* Mic toggle */}
+                  <button
+                    onClick={() => setIsMicEnabled(!isMicEnabled)}
+                    className={`p-3 rounded-full transition-colors ${
+                      isMicEnabled 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-red-500/80 text-white'
+                    }`}
+                  >
+                    {isMicEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                  </button>
+
+                  {/* Switch camera */}
+                  {videoDevices.length > 1 && (
+                    <button
+                      onClick={switchCamera}
+                      className="p-3 rounded-full bg-white/20 text-white"
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="p-4 border-t border-gray-800">
+          {stage === 'setup' && !error && isSupported && (
+            <button
+              onClick={startRecording}
+              disabled={!stream}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Circle className="w-5 h-5 fill-current" />
+              Start Recording
+            </button>
+          )}
+
+          {stage === 'recording' && (
+            <button
+              onClick={stopRecording}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition-colors"
+            >
+              <Square className="w-5 h-5 fill-current" />
+              Stop Recording
+            </button>
+          )}
+
+          {stage === 'preview' && (
+            <div className="flex gap-3">
+              <button
+                onClick={discardRecording}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Discard
+              </button>
+              <button
+                onClick={acceptRecording}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                Save to Reels
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ReelsPage() {
   const { toast } = useToast()
   const [reels, setReels] = useState([])
