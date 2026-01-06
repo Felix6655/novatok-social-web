@@ -232,6 +232,7 @@ function LoadingState() {
 }
 
 export default function MemoriesPage() {
+  const { toast } = useToast()
   const [memories, setMemories] = useState([])
   const [groupedMemories, setGroupedMemories] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -259,6 +260,10 @@ export default function MemoriesPage() {
 
     loadMemories()
   }, [mounted])
+
+  const handleSaveToggle = (saved) => {
+    toast({ type: 'success', message: saved ? 'Saved ✓' : 'Removed from Saved' })
+  }
 
   if (!mounted) {
     return (
