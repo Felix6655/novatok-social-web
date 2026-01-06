@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sparkles, Loader2, RotateCcw } from 'lucide-react'
+import { Sparkles, Loader2, RotateCcw, Bookmark } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { generateReading, saveReading, SPREAD_OPTIONS } from '@/lib/tarot/storage'
+import { saveItem, isSaved } from '@/lib/saved/storage'
 
 export default function TarotPage() {
   const { toast } = useToast()
