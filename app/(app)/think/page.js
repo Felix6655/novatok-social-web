@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Lightbulb, Send, Lock, Unlock, Sparkles } from 'lucide-react'
+import { Lightbulb, Send, Lock, Unlock, Sparkles, Bookmark } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { saveThought, isQuietVoicesUnlocked, unlockQuietVoices, getThoughtCount } from '@/lib/think/storage'
+import { saveItem, isSaved } from '@/lib/saved/storage'
 
 const MOODS = [
   { id: 'inspired', label: 'Inspired', emoji: '🌟' },
