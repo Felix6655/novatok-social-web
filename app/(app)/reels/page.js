@@ -62,6 +62,85 @@ const QUICK_ACTIONS = [
   { id: 'thinking', label: 'Thinking', href: '/thinking', icon: Brain, color: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/30', iconColor: 'text-green-400' }
 ]
 
+// Reaction Buttons Component
+function ReactionButtons({ reelId, onReact }) {
+  const [reactions, setReactions] = useState({ like: 0, funny: 0, fire: 0, userReaction: null })
+  
+  useEffect(() => {
+    setReactions(getReelReactions(reelId))
+  }, [reelId])
+  
+  const handleReaction = (type) => {
+    const result = toggleReaction(reelId, type)
+    setReactions(result.reactions)
+    onReact?.(result.added, type)
+  }
+  
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Like */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleReaction(REACTION_TYPES.LIKE) }}
+        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+          reactions.userReaction === REACTION_TYPES.LIKE
+            ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+            : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20'
+        }`}
+        title="Like"
+      >
+        <Heart className={`w-5 h-5 ${reactions.userReaction === REACTION_TYPES.LIKE ? 'fill-current' : ''}`} />
+        {reactions.like > 0 && <span className="text-xs">{formatReactionCount(reactions.like)}</span>}
+      </button>
+      
+      {/* Funny */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleReaction(REACTION_TYPES.FUNNY) }}
+        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+          reactions.userReaction === REACTION_TYPES.FUNNY
+            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+            : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20'
+        }`}
+        title="Funny"
+      >
+        <span className="text-lg">😂</span>
+        {reactions.funny > 0 && <span className="text-xs">{formatReactionCount(reactions.funny)}</span>}
+      </button>
+      
+      {/* Fire */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleReaction(REACTION_TYPES.FIRE) }}
+        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+          reactions.userReaction === REACTION_TYPES.FIRE
+            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
+            : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20'
+        }`}
+        title="Fire"
+      >
+        <span className="text-lg">🔥</span>
+        {reactions.fire > 0 && <span className="text-xs">{formatReactionCount(reactions.fire)}</span>}
+      </button>
+    </div>
+  )
+}
+
+// Generate caption for content reels
+function generateContentCaption(reel) {
+  switch (reel.type) {
+    case FEED_TYPES.THINK:
+      return reel.summary?.slice(0, 80) + (reel.summary?.length > 80 ? '...' : '') || ''
+    case FEED_TYPES.TAROT:
+      return `Tarot pull: ${reel.metadata?.cardNames || reel.title}`
+    case FEED_TYPES.HOROSCOPE:
+      const sign = reel.metadata?.sign
+      const lucky = reel.metadata?.luckyNumber
+      return `${sign?.symbol || ''} ${sign?.name || ''} reading${lucky ? ` • Lucky ${lucky}` : ''}`
+    case FEED_TYPES.THINKING:
+      return `Challenge: ${reel.title} • ${reel.metadata?.difficulty || 'medium'}`
+    default:
+      return reel.title || ''
+  }
+}
+
 // Local Mode Banner Component
 function LocalModeBanner() {
   return (
