@@ -169,9 +169,23 @@ export default function TarotPage() {
 
           {/* Overall Interpretation */}
           <div className="p-5 bg-gray-900/50 border-t border-gray-800">
-            <div className="flex items-center gap-2 text-violet-400 mb-2">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">Overall Guidance</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-violet-400">
+                <Sparkles className="w-4 h-4" />
+                <span className="text-sm font-medium">Overall Guidance</span>
+              </div>
+              <button
+                onClick={handleSaveReading}
+                disabled={isReadingSaved}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  isReadingSaved
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
+                }`}
+              >
+                <Bookmark className={`w-3.5 h-3.5 ${isReadingSaved ? 'fill-current' : ''}`} />
+                {isReadingSaved ? 'Saved' : 'Save'}
+              </button>
             </div>
             <p className="text-gray-300">{reading.overallInterpretation}</p>
           </div>
