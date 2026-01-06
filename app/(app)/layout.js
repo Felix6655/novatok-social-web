@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle,
   Brain, Star, Heart, Bot, AlarmClock, Video, Settings, LogOut,
-  ChevronDown, ChevronRight, Users, CalendarDays, Bookmark, Image, MessageSquare
+  ChevronDown, Users, CalendarDays, Bookmark, Image, MessageSquare
 } from 'lucide-react'
 import { ToastProvider, useToast } from '@/components/ui/ToastProvider'
 import ReminderPopup from '@/components/ReminderPopup'
