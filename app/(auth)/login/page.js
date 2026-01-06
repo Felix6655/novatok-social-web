@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Mail, Lock, ArrowRight, Loader2, Wand2 } from 'lucide-react'
+import { Sparkles, Mail, Lock, ArrowRight, Loader2, Wand2, AlertTriangle, CheckCircle } from 'lucide-react'
 import { signInWithPassword, signUpWithPassword, signInWithMagicLink, supabase } from '@/lib/supabase/client'
+import { checkSupabase, getConfigStatus, isDevelopment } from '@/lib/supabase/health'
 import { ToastProvider, useToast } from '@/components/ui/ToastProvider'
 
 function LoginForm() {
@@ -13,9 +14,22 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [healthStatus, setHealthStatus] = useState(null)
+  const [isCheckingHealth, setIsCheckingHealth] = useState(true)
 
-  // Check if Supabase is configured
-  const isConfigured = !!supabase
+  // Check Supabase health on mount
+  useEffect(() => {
+    async function checkHealth() {
+      const status = await checkSupabase()
+      setHealthStatus(status)
+      setIsCheckingHealth(false)
+    }
+    checkHealth()
+  }, [])
+
+  const configStatus = getConfigStatus()
+  const isConfigured = configStatus.configured
+  const isDevMode = isDevelopment()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -71,6 +85,14 @@ function LoginForm() {
     }
   }
 
+  // Development mode bypass
+  const handleDevBypass = () => {
+    if (isDevMode && !isConfigured) {
+      toast({ type: 'info', message: 'Entering development mode with localStorage' })
+      router.push('/think')
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       {/* Background decoration */}
@@ -104,9 +126,33 @@ function LoginForm() {
             </p>
           </div>
 
-          {!isConfigured && (
-            <div className="mb-4 p-3 rounded-xl bg-red-900/20 border border-red-500/30 text-sm text-red-300">
-              ⚠️ Supabase not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local
+          {/* Health Status Indicator */}
+          {!isCheckingHealth && (
+            <div className={`mb-4 p-3 rounded-xl text-sm flex items-start gap-3 ${
+              healthStatus?.ok 
+                ? 'bg-green-900/20 border border-green-500/30 text-green-300'
+                : 'bg-red-900/20 border border-red-500/30 text-red-300'
+            }`}>
+              {healthStatus?.ok ? (
+                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="font-medium">
+                  {healthStatus?.ok ? 'Connected to Supabase' : 'Supabase Not Configured'}
+                </p>
+                {!healthStatus?.ok && (
+                  <p className="text-xs mt-1 opacity-80">
+                    {configStatus.message}
+                  </p>
+                )}
+                {isDevMode && !healthStatus?.ok && (
+                  <p className="text-xs mt-1 text-amber-400">
+                    Development mode: localStorage fallback available
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -174,9 +220,19 @@ function LoginForm() {
             </button>
           </form>
 
+          {/* Dev Mode Bypass */}
+          {isDevMode && !isConfigured && (
+            <button
+              onClick={handleDevBypass}
+              className="w-full mt-3 py-2.5 rounded-xl border border-amber-500/30 text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors"
+            >
+              Continue in Dev Mode (localStorage)
+            </button>
+          )}
+
           {/* Mode switchers */}
           <div className="mt-6 pt-6 border-t border-gray-800 space-y-3">
-            {mode !== 'magic' && (
+            {mode !== 'magic' && isConfigured && (
               <button
                 type="button"
                 onClick={() => setMode('magic')}

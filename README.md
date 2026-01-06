@@ -46,7 +46,7 @@ Open the **SQL Editor** in Supabase and run the following SQL:
 -- Run this in Supabase SQL Editor
 -- =============================================
 
--- Enable UUID extension (if not already enabled)
+-- Enable UUID extension (usually enabled by default)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =============================================
@@ -54,34 +54,54 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Stores user thoughts/posts
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS thoughts (
+CREATE TABLE IF NOT EXISTS public.thoughts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   mood TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Create index for faster user queries
-CREATE INDEX IF NOT EXISTS thoughts_user_id_idx ON thoughts(user_id);
-CREATE INDEX IF NOT EXISTS thoughts_created_at_idx ON thoughts(created_at DESC);
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS thoughts_user_id_idx ON public.thoughts(user_id);
+CREATE INDEX IF NOT EXISTS thoughts_created_at_idx ON public.thoughts(created_at DESC);
 
 -- Enable Row Level Security
-ALTER TABLE thoughts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.thoughts ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own thoughts
-CREATE POLICY "Users can view own thoughts" ON thoughts
+-- Drop existing policies if they exist (for re-running)
+DROP POLICY IF EXISTS "Users can view their own thoughts" ON public.thoughts;
+DROP POLICY IF EXISTS "Users can insert their own thoughts" ON public.thoughts;
+DROP POLICY IF EXISTS "Users can update their own thoughts" ON public.thoughts;
+DROP POLICY IF EXISTS "Users can delete their own thoughts" ON public.thoughts;
+
+-- Policy: Users can SELECT their own thoughts only
+CREATE POLICY "Users can view their own thoughts"
+  ON public.thoughts
   FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
--- Policy: Users can insert their own thoughts
-CREATE POLICY "Users can insert own thoughts" ON thoughts
+-- Policy: Users can INSERT their own thoughts only
+CREATE POLICY "Users can insert their own thoughts"
+  ON public.thoughts
   FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
--- Policy: Users can delete their own thoughts
-CREATE POLICY "Users can delete own thoughts" ON thoughts
+-- Policy: Users can UPDATE their own thoughts only
+CREATE POLICY "Users can update their own thoughts"
+  ON public.thoughts
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy: Users can DELETE their own thoughts only
+CREATE POLICY "Users can delete their own thoughts"
+  ON public.thoughts
   FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- =============================================
@@ -89,50 +109,84 @@ CREATE POLICY "Users can delete own thoughts" ON thoughts
 -- Stores user profile information
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT,
   bio TEXT,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Enable Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can view their own profile
-CREATE POLICY "Users can view own profile" ON profiles
+-- Drop existing policies if they exist (for re-running)
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
+-- Policy: Users can SELECT their own profile only
+CREATE POLICY "Users can view their own profile"
+  ON public.profiles
   FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
--- Policy: Users can insert their own profile
-CREATE POLICY "Users can insert own profile" ON profiles
+-- Policy: Users can INSERT their own profile only
+CREATE POLICY "Users can insert their own profile"
+  ON public.profiles
   FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
--- Policy: Users can update their own profile
-CREATE POLICY "Users can update own profile" ON profiles
+-- Policy: Users can UPDATE their own profile only
+CREATE POLICY "Users can update their own profile"
+  ON public.profiles
   FOR UPDATE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- =============================================
--- OPTIONAL: Auto-create profile on signup
+-- OPTIONAL: Auto-create profile on user signup
+-- This trigger creates a default profile when
+-- a new user signs up via Supabase Auth
 -- =============================================
 
--- This function creates a profile when a new user signs up
+-- Drop existing trigger and function if they exist
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
+-- Function to create profile for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO public.profiles (user_id, display_name)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', 'NovaTok User'));
+  INSERT INTO public.profiles (user_id, display_name, updated_at)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', 'NovaTok User'),
+    NOW()
+  );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
--- Trigger to call the function on new user signup
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- Trigger to call function on new user signup
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- =============================================
+-- VERIFICATION: Check tables were created
+-- =============================================
+
+-- Run these to verify (optional)
+-- SELECT * FROM public.thoughts LIMIT 1;
+-- SELECT * FROM public.profiles LIMIT 1;
 ```
 
 ### 4. Configure Authentication
@@ -140,7 +194,21 @@ CREATE TRIGGER on_auth_user_created
 In Supabase dashboard:
 1. Go to **Authentication** → **Providers**
 2. Enable **Email** provider
-3. (Optional) Configure email templates under **Authentication** → **Email Templates**
+3. (Optional) Disable "Confirm email" for development in **Authentication** → **Settings**
+4. (Optional) Configure email templates under **Authentication** → **Email Templates**
+
+## Environment Modes
+
+### Development Mode (`NODE_ENV=development`)
+- If Supabase is not configured, the app uses localStorage fallback
+- Auth bypass is available on the login page
+- Console warnings indicate fallback mode
+
+### Production Mode (`NODE_ENV=production`)
+- Supabase MUST be configured
+- No localStorage fallback for user data
+- Full-page error if env vars are missing
+- Authentication is strictly enforced
 
 ## Features
 
@@ -176,7 +244,8 @@ app/
 
 lib/
 ├── supabase/
-│   └── client.js    # Supabase client
+│   ├── client.js    # Supabase client
+│   └── health.js    # Health check utilities
 ├── think/
 │   └── storage.js   # Think data layer
 └── profile/
@@ -187,11 +256,10 @@ components/
     └── ToastProvider.jsx
 ```
 
-## Development Mode
+## Security Notes
 
-If Supabase is not configured, the app will:
-1. Show a warning in the console
-2. Fall back to localStorage for data persistence
-3. Skip authentication checks
-
-This allows local development without Supabase setup.
+1. **Row Level Security (RLS)** is enabled on all tables
+2. **Users can only access their own data** via RLS policies
+3. **No localStorage in production** - all user data goes to Supabase
+4. **Auth is required** for all `/app/*` routes in production
+5. **Environment variables** must be set for production deployment

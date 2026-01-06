@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2 } from 'lucide-react'
+import { Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle } from 'lucide-react'
 import { ToastProvider } from '@/components/ui/ToastProvider'
 import { supabase, getSession } from '@/lib/supabase/client'
+import { isDevelopment, isProduction } from '@/lib/supabase/health'
 
 const navItems = [
   { href: '/think', label: 'Think', icon: Lightbulb },
@@ -19,6 +20,7 @@ export default function AppLayout({ children }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [configError, setConfigError] = useState(null)
 
   useEffect(() => {
     // Check initial session
@@ -40,10 +42,22 @@ export default function AppLayout({ children }) {
   }, [])
 
   async function checkAuth() {
-    // If Supabase is not configured, allow access (development mode)
+    // Check if Supabase is configured
     if (!supabase) {
-      console.warn('Supabase not configured - running in development mode')
-      setIsAuthenticated(true)
+      // In DEVELOPMENT: Allow fallback mode
+      if (isDevelopment()) {
+        console.warn('[DEV MODE] Supabase not configured - allowing access with localStorage fallback')
+        setIsAuthenticated(true)
+        setIsLoading(false)
+        return
+      }
+      
+      // In PRODUCTION: Show error, do not allow access
+      setConfigError({
+        title: 'Configuration Error',
+        message: 'Supabase is not configured. Please set the following environment variables:',
+        vars: ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY']
+      })
       setIsLoading(false)
       return
     }
@@ -61,6 +75,38 @@ export default function AppLayout({ children }) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Production configuration error - full page error
+  if (configError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,3.9%)] p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-red-900/20 border border-red-500/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-red-300">{configError.title}</h1>
+                <p className="text-sm text-red-400/80">Production environment</p>
+              </div>
+            </div>
+            <p className="text-red-200 mb-4">{configError.message}</p>
+            <ul className="space-y-2 mb-6">
+              {configError.vars.map((v) => (
+                <li key={v} className="font-mono text-sm bg-black/30 px-3 py-2 rounded-lg text-red-300">
+                  {v}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-red-400/60">
+              Add these to your deployment environment or .env.local file, then restart the server.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Loading state
