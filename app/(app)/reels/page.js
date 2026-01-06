@@ -1149,7 +1149,7 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
       // Use the unified uploadVideo function
       const result = await uploadVideo(
         recordedBlob,
-        { duration, width: 0, height: 0, source: 'recorded' },
+        { duration, width: 0, height: 0, source: 'recorded', caption: caption.trim() },
         setSaveProgress
       )
 
@@ -1167,6 +1167,7 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
       })
       
       setRecordedUrl(null) // Don't revoke if local mode, it's being used
+      setCaption('')
       onClose()
     } catch (err) {
       console.error('Save error:', err)
@@ -1185,6 +1186,7 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
     setRecordedBlob(null)
     setRecordedUrl(null)
     setTimer(0)
+    setCaption('')
     initCamera()
   }
 
