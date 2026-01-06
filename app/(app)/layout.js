@@ -1,9 +1,11 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lightbulb, Bell, MessageCircle, User, Sparkles } from 'lucide-react'
+import { Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2 } from 'lucide-react'
 import { ToastProvider } from '@/components/ui/ToastProvider'
+import { supabase, getSession } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/think', label: 'Think', icon: Lightbulb },
@@ -14,6 +16,80 @@ const navItems = [
 
 export default function AppLayout({ children }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    // Check initial session
+    checkAuth()
+
+    // Listen for auth state changes
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          router.push('/login')
+        } else if (event === 'SIGNED_IN') {
+          setIsAuthenticated(true)
+        }
+      })
+
+      return () => subscription.unsubscribe()
+    }
+  }, [])
+
+  async function checkAuth() {
+    // If Supabase is not configured, allow access (development mode)
+    if (!supabase) {
+      console.warn('Supabase not configured - running in development mode')
+      setIsAuthenticated(true)
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const session = await getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+      setIsAuthenticated(true)
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      router.push('/login')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,3.9%)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex items-center gap-2 text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Not authenticated - will redirect
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,3.9%)]">
+        <div className="flex items-center gap-2 text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Redirecting to login...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ToastProvider>

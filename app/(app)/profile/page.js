@@ -1,24 +1,54 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { User, Settings, Camera, MapPin, Calendar, Link as LinkIcon, Edit3, Lightbulb, MessageCircle } from 'lucide-react'
+import { User, Settings, Calendar, Edit3, Lightbulb, MessageCircle, LogOut, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { getProfile, getDisplayName, getBio } from '@/lib/profile/storage'
+import { useRouter } from 'next/navigation'
+import { getProfile } from '@/lib/profile/storage'
 import { getThoughtCount } from '@/lib/think/storage'
+import { signOut, supabase } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/ToastProvider'
 
 export default function ProfilePage() {
-  const [profileData, setProfileData] = useState({ profile: null, thoughtCount: 0, mounted: false })
+  const router = useRouter()
+  const { toast } = useToast()
+  const [mounted, setMounted] = useState(false)
+  const [profile, setProfile] = useState(null)
+  const [thoughtCount, setThoughtCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   useEffect(() => {
-    // Load data only on client side to prevent hydration mismatch
-    setProfileData({
-      profile: getProfile(),
-      thoughtCount: getThoughtCount(),
-      mounted: true
-    })
+    setMounted(true)
+    loadProfileData()
   }, [])
 
-  const { profile, thoughtCount, mounted } = profileData
+  async function loadProfileData() {
+    try {
+      const [profileData, thoughts] = await Promise.all([
+        getProfile(),
+        getThoughtCount()
+      ])
+      setProfile(profileData)
+      setThoughtCount(thoughts)
+    } catch (error) {
+      console.error('Failed to load profile:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleSignOut() {
+    setIsSigningOut(true)
+    try {
+      await signOut()
+      toast({ type: 'success', message: 'Signed out successfully' })
+      router.push('/login')
+    } catch (error) {
+      toast({ type: 'error', message: 'Failed to sign out' })
+      setIsSigningOut(false)
+    }
+  }
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -93,7 +123,7 @@ export default function ProfilePage() {
                   <Lightbulb className="w-4 h-4 text-purple-400" />
                 </div>
                 <div>
-                  <span className="text-white font-bold">{thoughtCount}</span>
+                  <span className="text-white font-bold">{isLoading ? '-' : thoughtCount}</span>
                   <span className="text-gray-500 text-sm ml-1">Thoughts</span>
                 </div>
               </div>
@@ -119,6 +149,25 @@ export default function ProfilePage() {
         <Edit3 className="w-4 h-4" />
         Edit Profile
       </Link>
+
+      {/* Sign Out Button */}
+      <button
+        onClick={handleSignOut}
+        disabled={isSigningOut}
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-red-500/30 text-red-400 font-medium hover:bg-red-500/10 transition-colors active:scale-[0.98] disabled:opacity-50"
+      >
+        {isSigningOut ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Signing out...</span>
+          </>
+        ) : (
+          <>
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </>
+        )}
+      </button>
     </div>
   )
 }
