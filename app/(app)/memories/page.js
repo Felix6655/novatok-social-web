@@ -368,7 +368,7 @@ export default function MemoriesPage() {
               <DateSeparator label="This Week" count={groupedMemories.thisWeek.length} />
               <div className="space-y-3 mt-2">
                 {groupedMemories.thisWeek.map(memory => (
-                  <MemoryCard key={memory.id} memory={memory} />
+                  <MemoryCard key={memory.id} memory={memory} onSaveToggle={handleSaveToggle} />
                 ))}
               </div>
             </div>
@@ -380,7 +380,7 @@ export default function MemoriesPage() {
               <DateSeparator label="Older" count={groupedMemories.older.length} />
               <div className="space-y-3 mt-2">
                 {groupedMemories.older.map(memory => (
-                  <MemoryCard key={memory.id} memory={memory} />
+                  <MemoryCard key={memory.id} memory={memory} onSaveToggle={handleSaveToggle} />
                 ))}
               </div>
             </div>
