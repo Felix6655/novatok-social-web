@@ -152,7 +152,7 @@ function LocalModeBanner() {
 }
 
 // Video Reel Card Component
-function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDelete, isMuted, onMuteToggle, isSupabaseMode }) {
+function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDelete, isMuted, onMuteToggle, isSupabaseMode, onReact }) {
   const config = getReelConfig(reel.type)
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
