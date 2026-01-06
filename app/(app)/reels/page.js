@@ -1114,6 +1114,7 @@ export default function ReelsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showRecordModal, setShowRecordModal] = useState(false)
   const [showRelinkModal, setShowRelinkModal] = useState(false)
   const [relinkTarget, setRelinkTarget] = useState(null)
   const [videoObjectUrls, setVideoObjectUrls] = useState({}) // id -> objectUrl
