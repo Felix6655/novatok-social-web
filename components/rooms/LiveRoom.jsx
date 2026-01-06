@@ -9,19 +9,37 @@ import {
   useParticipants,
   useLocalParticipant,
   useRoomContext,
-  useDataChannel,
   RoomAudioRenderer,
 } from '@livekit/components-react'
-import { Track, RoomEvent, DataPacket_Kind } from 'livekit-client'
+import { Track, RoomEvent } from 'livekit-client'
 import '@livekit/components-styles'
 import {
-  Video, VideoOff, Mic, MicOff, Monitor, Phone, Copy, Users,
+  Video, VideoOff, Mic, MicOff, Monitor, MonitorOff, Phone, Copy, Users,
   Send, MessageCircle, X, User, AlertCircle, Loader2
 } from 'lucide-react'
 import { formatMessageTime } from '@/lib/rooms/storage'
 
+// Screen Share Tile Component
+function ScreenShareTile({ trackRef, participantName, isLarge = false }) {
+  return (
+    <div className={`relative rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-cyan-500/50 overflow-hidden ${isLarge ? 'col-span-2 row-span-2' : ''}`}>
+      <VideoTrack
+        trackRef={trackRef}
+        className="w-full h-full object-contain bg-black"
+      />
+      {/* Screen share badge */}
+      <div className="absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/90 backdrop-blur-sm">
+        <Monitor className="w-4 h-4 text-white" />
+        <span className="text-white text-sm font-medium">
+          Screen • {participantName}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // Participant Video Tile Component
-function ParticipantTile({ participant, isLocal = false }) {
+function ParticipantTile({ participant, isLocal = false, isSmall = false }) {
   const tracks = useTracks(
     [Track.Source.Camera, Track.Source.Microphone],
     { onlySubscribed: false }
@@ -34,7 +52,7 @@ function ParticipantTile({ participant, isLocal = false }) {
   const isCameraOff = !videoTrack?.publication?.track
 
   return (
-    <div className="relative rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 overflow-hidden aspect-video flex items-center justify-center">
+    <div className={`relative rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 overflow-hidden ${isSmall ? 'aspect-video' : 'aspect-video'} flex items-center justify-center`}>
       {videoTrack?.publication?.track ? (
         <VideoTrack
           trackRef={videoTrack}
@@ -42,21 +60,21 @@ function ParticipantTile({ participant, isLocal = false }) {
         />
       ) : (
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-3 border border-indigo-500/30">
-            <User className="w-8 h-8 text-indigo-400" />
+          <div className={`${isSmall ? 'w-12 h-12' : 'w-16 h-16'} rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-3 border border-indigo-500/30`}>
+            <User className={`${isSmall ? 'w-6 h-6' : 'w-8 h-8'} text-indigo-400`} />
           </div>
-          <p className="text-white font-medium">{participant.name || participant.identity}</p>
-          <p className="text-gray-500 text-sm mt-1">Camera off</p>
+          <p className={`text-white font-medium ${isSmall ? 'text-sm' : ''}`}>{participant.name || participant.identity}</p>
+          <p className={`text-gray-500 ${isSmall ? 'text-xs' : 'text-sm'} mt-1`}>Camera off</p>
         </div>
       )}
 
       {/* Name badge */}
       <div className="absolute bottom-3 left-3 flex items-center gap-2 px-2 py-1 rounded-lg bg-black/60">
-        <span className="text-white text-sm font-medium">
+        <span className={`text-white ${isSmall ? 'text-xs' : 'text-sm'} font-medium`}>
           {participant.name || participant.identity}
           {isLocal && ' (You)'}
         </span>
-        {isMuted && <MicOff className="w-3.5 h-3.5 text-red-400" />}
+        {isMuted && <MicOff className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-red-400`} />}
       </div>
 
       {/* Audio track (hidden, for audio playback) */}
@@ -67,19 +85,38 @@ function ParticipantTile({ participant, isLocal = false }) {
   )
 }
 
-// Video Grid Component
+// Video Grid Component with Screen Share Support
 function VideoGrid() {
   const participants = useParticipants()
   const { localParticipant } = useLocalParticipant()
+  
+  // Get all tracks including screen share
+  const allTracks = useTracks(
+    [Track.Source.Camera, Track.Source.Microphone, Track.Source.ScreenShare],
+    { onlySubscribed: false }
+  )
+  
+  // Find screen share track
+  const screenShareTrack = allTracks.find(t => t.source === Track.Source.ScreenShare && t.publication?.track)
+  const screenShareParticipant = screenShareTrack?.participant
 
   // Include local participant in the grid
   const allParticipants = localParticipant
     ? [localParticipant, ...participants.filter(p => p.identity !== localParticipant.identity)]
     : participants
 
-  // Calculate grid layout
+  // Calculate grid layout based on screen share presence
   const getGridClass = () => {
     const count = allParticipants.length
+    const hasScreenShare = !!screenShareTrack
+    
+    if (hasScreenShare) {
+      // Screen share layout: screen share takes priority
+      if (count <= 2) return 'grid-cols-1 md:grid-cols-2'
+      return 'grid-cols-2 md:grid-cols-3'
+    }
+    
+    // Normal layout
     if (count <= 1) return 'grid-cols-1'
     if (count <= 2) return 'grid-cols-1 md:grid-cols-2'
     if (count <= 4) return 'grid-cols-2'
@@ -88,17 +125,28 @@ function VideoGrid() {
   }
 
   return (
-    <div className={`grid ${getGridClass()} gap-4 h-full p-4`}>
+    <div className={`grid ${getGridClass()} gap-4 h-full p-4 auto-rows-fr`}>
+      {/* Screen Share Tile (if active) - shown first and larger */}
+      {screenShareTrack && (
+        <ScreenShareTile
+          trackRef={screenShareTrack}
+          participantName={screenShareParticipant?.name || screenShareParticipant?.identity || 'Unknown'}
+          isLarge={allParticipants.length > 1}
+        />
+      )}
+      
+      {/* Participant Tiles */}
       {allParticipants.map((participant) => (
         <ParticipantTile
           key={participant.identity}
           participant={participant}
           isLocal={participant.identity === localParticipant?.identity}
+          isSmall={!!screenShareTrack && allParticipants.length > 2}
         />
       ))}
       
-      {/* Show placeholder if alone */}
-      {allParticipants.length === 1 && (
+      {/* Show placeholder if alone and no screen share */}
+      {allParticipants.length === 1 && !screenShareTrack && (
         <div className="relative rounded-2xl bg-gray-900/50 border border-gray-800 border-dashed overflow-hidden aspect-video flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-2">
@@ -287,8 +335,8 @@ function RoomChat({ roomId, isOpen, onClose }) {
   )
 }
 
-// Controls Bar Component
-function ControlsBar({ onLeave, isChatOpen, onToggleChat }) {
+// Controls Bar Component with Screen Share
+function ControlsBar({ onLeave, isChatOpen, onToggleChat, onScreenShareChange, onToast }) {
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
   const [isMicOn, setIsMicOn] = useState(true)
@@ -300,8 +348,9 @@ function ControlsBar({ onLeave, isChatOpen, onToggleChat }) {
     if (localParticipant) {
       setIsMicOn(!localParticipant.isMicrophoneEnabled === false)
       setIsCameraOn(!localParticipant.isCameraEnabled === false)
+      setIsScreenSharing(localParticipant.isScreenShareEnabled)
     }
-  }, [localParticipant?.isMicrophoneEnabled, localParticipant?.isCameraEnabled])
+  }, [localParticipant?.isMicrophoneEnabled, localParticipant?.isCameraEnabled, localParticipant?.isScreenShareEnabled])
 
   const toggleMic = async () => {
     try {
@@ -321,9 +370,35 @@ function ControlsBar({ onLeave, isChatOpen, onToggleChat }) {
     }
   }
 
-  const handleScreenShare = () => {
-    // Screen share - coming in future
-    alert('Screen sharing coming soon!')
+  const handleScreenShare = async () => {
+    try {
+      if (isScreenSharing) {
+        // Stop screen sharing
+        await localParticipant?.setScreenShareEnabled(false)
+        setIsScreenSharing(false)
+        onScreenShareChange?.(false)
+        onToast?.({ type: 'info', message: 'Screen sharing stopped' })
+      } else {
+        // Start screen sharing
+        await localParticipant?.setScreenShareEnabled(true)
+        setIsScreenSharing(true)
+        onScreenShareChange?.(true)
+        onToast?.({ type: 'success', message: 'Screen sharing started' })
+      }
+    } catch (e) {
+      console.error('Screen share error:', e)
+      
+      // Handle specific errors
+      if (e.name === 'NotAllowedError' || e.message?.includes('cancelled') || e.message?.includes('denied')) {
+        onToast?.({ type: 'info', message: 'Screen share cancelled' })
+      } else if (e.name === 'NotSupportedError') {
+        onToast?.({ type: 'error', message: 'Screen sharing not supported' })
+      } else {
+        onToast?.({ type: 'error', message: 'Failed to share screen' })
+      }
+      
+      setIsScreenSharing(false)
+    }
   }
 
   const handleLeave = () => {
@@ -359,10 +434,14 @@ function ControlsBar({ onLeave, isChatOpen, onToggleChat }) {
 
       <button
         onClick={handleScreenShare}
-        className="p-4 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-all"
-        title="Share screen (coming soon)"
+        className={`p-4 rounded-full transition-all ${
+          isScreenSharing
+            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30'
+            : 'bg-gray-700 text-white hover:bg-gray-600'
+        }`}
+        title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
       >
-        <Monitor className="w-6 h-6" />
+        {isScreenSharing ? <MonitorOff className="w-6 h-6" /> : <Monitor className="w-6 h-6" />}
       </button>
 
       <button
@@ -395,10 +474,12 @@ export default function LiveRoom({
   token,
   serverUrl,
   onLeave,
-  onCopyInvite
+  onCopyInvite,
+  onToast
 }) {
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [connectionError, setConnectionError] = useState(null)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   const handleError = useCallback((error) => {
     console.error('LiveKit error:', error)
@@ -454,6 +535,12 @@ export default function LiveRoom({
           <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-medium border border-green-500/30">
             Live
           </span>
+          {isScreenSharing && (
+            <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-medium border border-cyan-500/30 flex items-center gap-1">
+              <Monitor className="w-3 h-3" />
+              Sharing
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -498,6 +585,8 @@ export default function LiveRoom({
         onLeave={onLeave}
         isChatOpen={isChatOpen}
         onToggleChat={() => setIsChatOpen(!isChatOpen)}
+        onScreenShareChange={setIsScreenSharing}
+        onToast={onToast}
       />
     </LiveKitRoom>
   )
