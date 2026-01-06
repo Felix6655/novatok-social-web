@@ -1718,12 +1718,14 @@ export default function ReelsPage() {
                     isMuted={isMuted}
                     onMuteToggle={() => setIsMuted(!isMuted)}
                     isSupabaseMode={isSupabaseMode}
+                    onReact={handleReaction}
                   />
                 ) : (
                   <ContentReelCard
                     reel={reel}
                     isActive={index === currentIndex}
                     onSaveToggle={handleSaveToggle}
+                    onReact={handleReaction}
                   />
                 )}
               </div>
