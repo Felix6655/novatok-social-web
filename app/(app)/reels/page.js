@@ -788,46 +788,75 @@ function UploadModal({ isOpen, onClose, onUpload }) {
       <div className="w-full max-w-md bg-[hsl(0,0%,9%)] rounded-2xl border border-gray-800 p-6">
         <h2 className="text-xl font-bold text-white mb-2">Upload Video</h2>
         <p className="text-gray-400 text-sm mb-6">
-          Upload a video to create a reel. Max {MAX_FILE_SIZE_MB}MB. Supported: {ACCEPTED_EXTENSIONS.join(', ')}
+          {selectedFile 
+            ? `Selected: ${selectedFile.name}` 
+            : `Upload a video to create a reel. Max ${MAX_FILE_SIZE_MB}MB. Supported: ${ACCEPTED_EXTENSIONS.join(', ')}`
+          }
         </p>
 
-        {/* Drop Zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-            isUploading 
-              ? 'cursor-not-allowed border-gray-700 bg-gray-800/30'
-              : isDragging 
+        {!selectedFile ? (
+          /* Drop Zone */
+          <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+              isDragging 
                 ? 'border-pink-500 bg-pink-500/10 cursor-pointer' 
                 : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50 cursor-pointer'
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-            onChange={handleFileSelect}
-            className="hidden"
-            disabled={isUploading}
-          />
-          
-          {isUploading ? (
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-10 h-10 text-pink-500 animate-spin mb-3" />
-              <p className="text-white font-medium mb-1">{getProgressText()}</p>
-              <p className="text-gray-500 text-sm">Please wait...</p>
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Upload className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+            <p className="text-white font-medium mb-1">Drop video here or click to browse</p>
+            <p className="text-gray-500 text-sm">MP4, WebM, or MOV up to {MAX_FILE_SIZE_MB}MB</p>
+          </div>
+        ) : isUploading ? (
+          /* Uploading State */
+          <div className="border-2 border-dashed rounded-xl p-8 text-center border-gray-700 bg-gray-800/30">
+            <Loader2 className="w-10 h-10 text-pink-500 animate-spin mx-auto mb-3" />
+            <p className="text-white font-medium mb-1">{getProgressText()}</p>
+            <p className="text-gray-500 text-sm">Please wait...</p>
+          </div>
+        ) : (
+          /* Caption Input */
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 border border-gray-700">
+              <Film className="w-8 h-8 text-pink-400" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium truncate">{selectedFile.name}</p>
+                <p className="text-gray-500 text-sm">{(selectedFile.size / 1024 / 1024).toFixed(1)} MB</p>
+              </div>
+              <button
+                onClick={() => setSelectedFile(null)}
+                className="p-1 rounded text-gray-500 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          ) : (
-            <>
-              <Upload className="w-10 h-10 text-gray-500 mx-auto mb-3" />
-              <p className="text-white font-medium mb-1">Drop video here or click to browse</p>
-              <p className="text-gray-500 text-sm">MP4, WebM, or MOV up to {MAX_FILE_SIZE_MB}MB</p>
-            </>
-          )}
-        </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Caption <span className="text-gray-600">(optional, max 120 chars)</span>
+              </label>
+              <input
+                type="text"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value.slice(0, 120))}
+                placeholder="Add a caption to your video..."
+                className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500/50"
+              />
+              <p className="text-xs text-gray-600 mt-1 text-right">{caption.length}/120</p>
+            </div>
+          </div>
+        )}
 
         {/* Error */}
         {error && (
@@ -840,12 +869,20 @@ function UploadModal({ isOpen, onClose, onUpload }) {
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isUploading}
             className="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
+          {selectedFile && !isUploading && (
+            <button
+              onClick={handleUploadConfirm}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white font-medium hover:opacity-90"
+            >
+              Upload
+            </button>
+          )}
         </div>
       </div>
     </div>
