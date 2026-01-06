@@ -763,12 +763,12 @@ function UploadModal({ isOpen, onClose, onUpload }) {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
+    if (file) handleFileSelected(file)
   }
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
-    if (file) handleFile(file)
+    if (file) handleFileSelected(file)
   }
 
   const getProgressText = () => {
