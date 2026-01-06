@@ -18,15 +18,6 @@ export default function LivePage() {
   const [canSwitchCamera, setCanSwitchCamera] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    
-    // Cleanup on unmount
-    return () => {
-      stopAllTracks()
-    }
-  }, [])
-
   // Stop all media tracks
   const stopAllTracks = useCallback(() => {
     if (streamRef.current) {
@@ -39,6 +30,15 @@ export default function LivePage() {
       videoRef.current.srcObject = null
     }
   }, [])
+
+  useEffect(() => {
+    setMounted(true)
+    
+    // Cleanup on unmount
+    return () => {
+      stopAllTracks()
+    }
+  }, [stopAllTracks])
 
   // Get available video devices
   const getVideoDevices = useCallback(async () => {
