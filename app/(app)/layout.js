@@ -108,25 +108,46 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
       <div className={`sidebar-section-content ${!section.collapsible || isExpanded ? 'expanded' : 'collapsed'}`}>
         <ul className="space-y-0.5 mt-1">
           {section.items.map((item, idx) => {
-            const isActive = pathname === item.href
+            const isActive = !item.isExternal && pathname === item.href
             const Icon = item.icon
+            
+            // Shared styling for both internal and external links
+            const linkClassName = `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
+              isActive
+                ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+            }`
+            
+            const linkContent = (
+              <>
+                <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-purple-400' : ''}`} />
+                <span className="text-sm font-medium truncate">{item.label}</span>
+              </>
+            )
+            
             return (
               <li 
                 key={item.href}
                 style={{ animationDelay: `${idx * 30}ms` }}
                 className={isExpanded ? 'animate-fade-in' : ''}
               >
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-purple-400' : ''}`} />
-                  <span className="text-sm font-medium truncate">{item.label}</span>
-                </Link>
+                {item.isExternal ? (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkClassName}
+                  >
+                    {linkContent}
+                  </a>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={linkClassName}
+                  >
+                    {linkContent}
+                  </Link>
+                )}
               </li>
             )
           })}
