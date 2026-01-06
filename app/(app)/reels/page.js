@@ -773,6 +773,23 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
     }
   }, [isMicEnabled])
 
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+    }
+    setStream(null)
+    setIsRecording(false)
+    setRecordedBlob(null)
+    setRecordedUrl(null)
+    setTimer(0)
+    setStage('setup')
+    chunksRef.current = []
+  }, [])
+
   // Initialize on open
   useEffect(() => {
     if (isOpen && isSupported) {
@@ -781,7 +798,7 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
     return () => {
       cleanup()
     }
-  }, [isOpen, isSupported, initCamera])
+  }, [isOpen, isSupported, initCamera, cleanup])
 
   // Update audio track when mic toggle changes
   useEffect(() => {
@@ -792,26 +809,6 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
       })
     }
   }, [isMicEnabled, stream, isRecording])
-
-  // Cleanup function
-  const cleanup = () => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current)
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
-    }
-    if (recordedUrl) {
-      URL.revokeObjectURL(recordedUrl)
-    }
-    setStream(null)
-    setIsRecording(false)
-    setRecordedBlob(null)
-    setRecordedUrl(null)
-    setTimer(0)
-    setStage('setup')
-    chunksRef.current = []
-  }
 
   // Start recording
   const startRecording = () => {
