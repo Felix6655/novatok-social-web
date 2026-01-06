@@ -135,12 +135,26 @@ export default function HoroscopePage() {
         <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 overflow-hidden">
           {/* Header */}
           <div className="p-5 border-b border-gray-800 bg-gradient-to-r from-amber-900/20 to-orange-900/20">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{reading.sign.symbol}</span>
-              <div>
-                <h2 className="text-xl font-bold text-white">{reading.sign.name}</h2>
-                <p className="text-sm text-gray-400">{reading.sign.dates}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{reading.sign.symbol}</span>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{reading.sign.name}</h2>
+                  <p className="text-sm text-gray-400">{reading.sign.dates}</p>
+                </div>
               </div>
+              <button
+                onClick={handleSaveReading}
+                disabled={isReadingSaved}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  isReadingSaved
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
+                }`}
+              >
+                <Bookmark className={`w-3.5 h-3.5 ${isReadingSaved ? 'fill-current' : ''}`} />
+                {isReadingSaved ? 'Saved' : 'Save'}
+              </button>
             </div>
           </div>
 
