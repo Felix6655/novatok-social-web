@@ -22,6 +22,7 @@ const sidebarSections = [
     items: [
       { href: '/home', label: 'Home', icon: Home },
       { href: '/reels', label: 'Reels', icon: Play },
+      { href: '/rooms', label: 'Rooms', icon: Layout },
       { href: '/think', label: 'Think', icon: Lightbulb },
       { href: '/thinking', label: 'Thinking', icon: Brain },
       { href: '/soulmate', label: 'SoulMate', icon: Heart },
