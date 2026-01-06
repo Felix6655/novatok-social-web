@@ -85,16 +85,12 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
       {section.collapsible ? (
         <button
           onClick={() => toggleSection(section.id)}
-          className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
+          className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-all duration-200 hover:bg-gray-800/30 ${
             hasActiveItem ? 'text-purple-400' : 'text-gray-500 hover:text-gray-400'
           }`}
         >
           <span>{section.label}</span>
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
         </button>
       ) : (
         <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -102,29 +98,33 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
         </div>
       )}
       
-      {(!section.collapsible || isExpanded) && (
+      <div className={`sidebar-section-content ${!section.collapsible || isExpanded ? 'expanded' : 'collapsed'}`}>
         <ul className="space-y-0.5 mt-1">
-          {section.items.map((item) => {
+          {section.items.map((item, idx) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             return (
-              <li key={item.href}>
+              <li 
+                key={item.href}
+                style={{ animationDelay: `${idx * 30}ms` }}
+                className={isExpanded ? 'animate-fade-in' : ''}
+              >
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
                     isActive
                       ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
                       : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-purple-400' : ''}`} />
                   <span className="text-sm font-medium truncate">{item.label}</span>
                 </Link>
               </li>
             )
           })}
         </ul>
-      )}
+      </div>
     </div>
   )
 }
