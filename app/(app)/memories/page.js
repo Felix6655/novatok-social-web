@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { 
   Clock, Lightbulb, Sparkles, Star, Calendar, 
-  MessageCircle, Heart, Briefcase, Smile 
+  MessageCircle, Heart, Briefcase, Smile, Bookmark 
 } from 'lucide-react'
 import { 
   getAggregatedMemories, 
@@ -11,6 +11,8 @@ import {
   formatMemoryDate,
   MEMORY_TYPES 
 } from '@/lib/memories/aggregate'
+import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
+import { useToast } from '@/components/ui/ToastProvider'
 
 // Memory type icon mapping
 const TYPE_ICONS = {
