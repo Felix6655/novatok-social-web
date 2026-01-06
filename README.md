@@ -429,11 +429,102 @@ In Supabase dashboard:
 ## Features
 
 - **Think** - Share your thoughts with mood selection
+- **Reels** - TikTok-style vertical video feed with upload and recording
+- **Rooms** - Group video chat rooms (Zoom/Meet style)
 - **Notifications** - Stay updated (coming soon)
 - **Messages** - Chat with others (coming soon)
 - **Profile** - Customize your profile with display name and bio
 - **SoulMatch** - AI-powered matching (coming soon)
 - **Discover** - Find creators to follow (coming soon)
+
+---
+
+## LiveKit Setup (for Rooms Feature)
+
+The Rooms feature supports real-time group video calls powered by [LiveKit](https://livekit.io). 
+
+### Demo Mode vs Live Mode
+
+| Mode | Behavior |
+|------|----------|
+| **Demo Mode** | Default when LiveKit is not configured. Shows placeholder video tiles and demo chat. Perfect for UI testing. |
+| **Live Mode** | Enabled when LiveKit credentials are set. Real video/audio streaming between participants. |
+
+### 1. Get LiveKit Credentials (Free Tier Available)
+
+1. Go to [LiveKit Cloud](https://cloud.livekit.io) and sign up
+2. Create a new project
+3. In your project dashboard, find:
+   - **WebSocket URL** (looks like `wss://your-project.livekit.cloud`)
+   - **API Key** (starts with `API...`)
+   - **API Secret** (a long secret string)
+
+### 2. Set Environment Variables
+
+Add these to your `.env.local` file:
+
+```env
+# LiveKit Configuration (for Rooms feature)
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=APIxxxxxxxxxxxxxxx
+LIVEKIT_API_SECRET=your-secret-key-here
+```
+
+**⚠️ Security Note:** 
+- `LIVEKIT_API_SECRET` is **server-side only** and never exposed to the browser
+- The token endpoint (`/api/livekit/token`) generates short-lived JWT tokens for clients
+- Never commit `.env.local` to version control
+
+### 3. Restart the Server
+
+After adding credentials:
+```bash
+# Stop the dev server (Ctrl+C) and restart
+yarn dev
+```
+
+### 4. Test with Two Browsers
+
+1. Open `/rooms` and create a new room
+2. Copy the invite link
+3. Open the link in a **different browser** or **incognito window**
+4. Both participants should see each other's video and can chat
+
+**Expected behavior:**
+- Name modal appears asking for display name
+- Video/audio permissions requested
+- "Live" badge appears in the room header (green)
+- Video grid shows participant tiles
+- Chat messages sync in real-time
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Still seeing "Demo mode" banner | Check that all 3 env vars are set and server is restarted |
+| "Connection Failed" error | Verify `LIVEKIT_URL` is correct (starts with `wss://`) |
+| No video showing | Check browser permissions for camera/mic |
+| Can't see other participants | Ensure both are in the same room (same room ID in URL) |
+
+### Architecture
+
+```
+┌─────────────────┐    POST /api/livekit/token    ┌─────────────────┐
+│   Browser       │ ──────────────────────────────▶│   Next.js API   │
+│   (Client)      │                                │   (Server)      │
+│                 │◀────────────── token ──────────│                 │
+└────────┬────────┘                                └────────┬────────┘
+         │                                                  │
+         │ WebSocket (wss://)                               │ Uses API Key/Secret
+         │                                                  │
+         ▼                                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         LiveKit Cloud                                │
+│                    (WebRTC SFU Server)                              │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Tech Stack
 
