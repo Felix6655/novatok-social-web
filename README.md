@@ -532,6 +532,8 @@ yarn dev
 - **Styling**: Tailwind CSS
 - **Database**: Supabase (PostgreSQL)
 - **Authentication**: Supabase Auth
+- **File Storage**: Supabase Storage
+- **Video Rooms**: LiveKit (WebRTC)
 - **Icons**: Lucide React
 
 ## Project Structure
