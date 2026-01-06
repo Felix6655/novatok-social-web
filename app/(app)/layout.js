@@ -20,6 +20,7 @@ const sidebarSections = [
     label: 'Core',
     collapsible: false,
     items: [
+      { href: '/home', label: 'Home', icon: Home },
       { href: '/think', label: 'Think', icon: Lightbulb },
       { href: '/thinking', label: 'Thinking', icon: Brain },
       { href: '/soulmate', label: 'SoulMate', icon: Heart },
