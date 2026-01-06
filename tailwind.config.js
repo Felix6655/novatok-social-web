@@ -188,7 +188,14 @@ module.exports = {
                         'accordion-down': 'accordion-down 0.2s ease-out',
                         'accordion-up': 'accordion-up 0.2s ease-out',
                         'toast-in': 'toast-in 0.3s ease-out forwards',
-                        'fade-in': 'fade-in 0.4s ease-out'
+                        'fade-in': 'fade-in 0.4s ease-out',
+                        'fade-in-up': 'fade-in-up 0.5s ease-out',
+                        'fade-in-scale': 'fade-in-scale 0.3s ease-out',
+                        'slide-down': 'slide-down 0.25s ease-out forwards',
+                        'slide-up': 'slide-up 0.2s ease-out forwards',
+                        'scale-in': 'scale-in 0.2s ease-out',
+                        'bounce-subtle': 'bounce-subtle 0.3s ease-in-out',
+                        'pulse-ring': 'pulse-ring 1.5s ease-out infinite'
                 }
         }
     },
