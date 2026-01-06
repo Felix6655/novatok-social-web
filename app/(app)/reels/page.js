@@ -973,6 +973,7 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveProgress, setSaveProgress] = useState(null)
+  const [caption, setCaption] = useState('')
   
   const videoRef = useRef(null)
   const previewVideoRef = useRef(null)
