@@ -381,7 +381,10 @@ export default function AppLayout({ children }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen flex">
+      {/* Premium Constellation Background - behind all content */}
+      <ConstellationBackground />
+      
+      <div className="min-h-screen flex relative" style={{ zIndex: 1 }}>
         {/* Desktop Sidebar */}
         <Sidebar pathname={pathname} />
 
