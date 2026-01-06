@@ -216,12 +216,12 @@ function Sidebar({ pathname }) {
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50 active:scale-[0.98]"
             >
               {isSigningOut ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               )}
               <span className="text-sm font-medium">Sign Out</span>
             </button>
