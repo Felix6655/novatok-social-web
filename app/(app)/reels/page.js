@@ -1231,6 +1231,19 @@ export default function ReelsPage() {
     toast({ type: 'success', message: 'Video uploaded!' })
   }
 
+  const handleRecorded = ({ entry, objectUrl }) => {
+    // Add the new object URL to state
+    setVideoObjectUrls(prev => ({ ...prev, [entry.id]: objectUrl }))
+    
+    // Reload reels
+    getAllReelItems(50).then(items => {
+      setReels(items)
+      setCurrentIndex(0) // Go to the new recorded video
+    })
+    
+    toast({ type: 'success', message: 'Recorded reel added ✓' })
+  }
+
   const handleRelink = (videoId, objectUrl) => {
     setVideoObjectUrls(prev => ({ ...prev, [videoId]: objectUrl }))
     setShowRelinkModal(false)
