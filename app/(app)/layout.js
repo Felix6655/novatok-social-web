@@ -5,26 +5,68 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle,
-  Brain, Star, Heart, Bot, AlarmClock
+  Brain, Star, Heart, Bot, AlarmClock, Video, Settings, LogOut,
+  ChevronDown, ChevronRight, Users, CalendarDays, Bookmark, Image, MessageSquare
 } from 'lucide-react'
-import { ToastProvider } from '@/components/ui/ToastProvider'
+import { ToastProvider, useToast } from '@/components/ui/ToastProvider'
 import ReminderPopup from '@/components/ReminderPopup'
-import { supabase, getSession } from '@/lib/supabase/client'
-import { isDevelopment, isProduction } from '@/lib/supabase/health'
+import { supabase, getSession, signOut } from '@/lib/supabase/client'
+import { isDevelopment } from '@/lib/supabase/health'
 
-const navItems = [
-  { href: '/think', label: 'Think', icon: Lightbulb },
-  { href: '/thinking', label: 'Thinking', icon: Brain },
-  { href: '/horoscope', label: 'Horoscope', icon: Star },
-  { href: '/tarot', label: 'Tarot', icon: Sparkles },
-  { href: '/soulmate', label: 'SoulMate', icon: Heart },
-  { href: '/savebot', label: 'SaveBot', icon: Bot },
-  { href: '/notifications', label: 'Notifications', icon: Bell },
-  { href: '/messages', label: 'Messages', icon: MessageCircle },
-  { href: '/profile', label: 'Profile', icon: User },
+// Sidebar navigation structure
+const sidebarSections = [
+  {
+    id: 'core',
+    label: 'Core',
+    collapsible: false,
+    items: [
+      { href: '/think', label: 'Think', icon: Lightbulb },
+      { href: '/thinking', label: 'Thinking', icon: Brain },
+      { href: '/soulmate', label: 'SoulMate', icon: Heart },
+      { href: '/messages', label: 'Messages', icon: MessageCircle },
+      { href: '/notifications', label: 'Notifications', icon: Bell },
+    ]
+  },
+  {
+    id: 'create',
+    label: 'Create & AI',
+    collapsible: true,
+    items: [
+      { href: '/live', label: 'Go Live', icon: Video },
+      { href: '/tarot', label: 'Tarot / AI Psychic', icon: Sparkles },
+      { href: '/horoscope', label: 'Horoscope', icon: Star },
+      { href: '/ai', label: 'Chat with AIs', icon: MessageSquare },
+    ]
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    collapsible: true,
+    items: [
+      { href: '/savebot', label: 'SaveBot', icon: Bot },
+      { href: '/reminders', label: 'Reminders', icon: AlarmClock },
+      { href: '/memories', label: 'Memories', icon: Image },
+      { href: '/saved', label: 'Saved', icon: Bookmark },
+    ]
+  },
+  {
+    id: 'community',
+    label: 'Community',
+    collapsible: true,
+    items: [
+      { href: '/groups', label: 'Groups', icon: Users },
+      { href: '/events', label: 'Events', icon: CalendarDays },
+    ]
+  },
 ]
 
-// Mobile nav shows fewer items
+// Account section items
+const accountItems = [
+  { href: '/profile', label: 'Profile', icon: User },
+  { href: '/settings', label: 'Settings', icon: Settings },
+]
+
+// Mobile nav shows fewer items (unchanged)
 const mobileNavItems = [
   { href: '/think', label: 'Think', icon: Lightbulb },
   { href: '/thinking', label: 'Thinking', icon: Brain },
@@ -32,6 +74,163 @@ const mobileNavItems = [
   { href: '/notifications', label: 'Alerts', icon: Bell },
   { href: '/profile', label: 'Profile', icon: User },
 ]
+
+// Sidebar Section Component
+function SidebarSection({ section, pathname, expandedSections, toggleSection }) {
+  const isExpanded = expandedSections[section.id]
+  const hasActiveItem = section.items.some(item => pathname === item.href)
+  
+  return (
+    <div className="mb-2">
+      {section.collapsible ? (
+        <button
+          onClick={() => toggleSection(section.id)}
+          className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors ${
+            hasActiveItem ? 'text-purple-400' : 'text-gray-500 hover:text-gray-400'
+          }`}
+        >
+          <span>{section.label}</span>
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </button>
+      ) : (
+        <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          {section.label}
+        </div>
+      )}
+      
+      {(!section.collapsible || isExpanded) && (
+        <ul className="space-y-0.5 mt-1">
+          {section.items.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`} />
+                  <span className="text-sm font-medium truncate">{item.label}</span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// Main Sidebar Component
+function Sidebar({ pathname }) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [expandedSections, setExpandedSections] = useState({
+    create: true,
+    tools: true,
+    community: false,
+  })
+  const [isSigningOut, setIsSigningOut] = useState(false)
+
+  const toggleSection = (sectionId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }))
+  }
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+    try {
+      await signOut()
+      toast({ type: 'success', message: 'Signed out successfully' })
+      router.push('/login')
+    } catch (error) {
+      toast({ type: 'error', message: 'Failed to sign out' })
+      setIsSigningOut(false)
+    }
+  }
+
+  return (
+    <aside className="hidden md:flex flex-col w-64 bg-[hsl(0,0%,5%)] border-r border-gray-800 fixed h-full">
+      {/* Logo */}
+      <div className="p-4 border-b border-gray-800">
+        <Link href="/think" className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            NovaTok
+          </span>
+        </Link>
+      </div>
+
+      {/* Navigation Sections */}
+      <nav className="flex-1 p-3 overflow-y-auto scrollbar-hide">
+        {sidebarSections.map((section) => (
+          <SidebarSection
+            key={section.id}
+            section={section}
+            pathname={pathname}
+            expandedSections={expandedSections}
+            toggleSection={toggleSection}
+          />
+        ))}
+      </nav>
+
+      {/* Account Section */}
+      <div className="p-3 border-t border-gray-800">
+        <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Account
+        </div>
+        <ul className="space-y-0.5 mt-1">
+          {accountItems.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`} />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </Link>
+              </li>
+            )
+          })}
+          {/* Sign Out */}
+          <li>
+            <button
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50"
+            >
+              {isSigningOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+              <span className="text-sm font-medium">Sign Out</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  )
+}
 
 export default function AppLayout({ children }) {
   const pathname = usePathname()
@@ -41,10 +240,8 @@ export default function AppLayout({ children }) {
   const [configError, setConfigError] = useState(null)
 
   useEffect(() => {
-    // Check initial session
     checkAuth()
 
-    // Listen for auth state changes
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT' || !session) {
@@ -60,9 +257,7 @@ export default function AppLayout({ children }) {
   }, [])
 
   async function checkAuth() {
-    // Check if Supabase is configured
     if (!supabase) {
-      // In DEVELOPMENT: Allow fallback mode
       if (isDevelopment()) {
         console.warn('[DEV MODE] Supabase not configured - allowing access with localStorage fallback')
         setIsAuthenticated(true)
@@ -70,7 +265,6 @@ export default function AppLayout({ children }) {
         return
       }
       
-      // In PRODUCTION: Show error, do not allow access
       setConfigError({
         title: 'Configuration Error',
         message: 'Supabase is not configured. Please set the following environment variables:',
@@ -95,7 +289,7 @@ export default function AppLayout({ children }) {
     }
   }
 
-  // Production configuration error - full page error
+  // Production configuration error
   if (configError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,3.9%)] p-4">
@@ -144,7 +338,7 @@ export default function AppLayout({ children }) {
     )
   }
 
-  // Not authenticated - will redirect
+  // Not authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[hsl(0,0%,3.9%)]">
@@ -160,67 +354,7 @@ export default function AppLayout({ children }) {
     <ToastProvider>
       <div className="min-h-screen flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 bg-[hsl(0,0%,5%)] border-r border-gray-800 fixed h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-gray-800">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                NovaTok
-              </span>
-            </Link>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-            <ul className="space-y-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href
-                const Icon = item.icon
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                      }`}
-                    >
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-purple-400' : ''}`} />
-                      <span className="font-medium text-sm">{item.label}</span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-            
-            {/* Reminders Link */}
-            <div className="mt-4 pt-4 border-t border-gray-800">
-              <Link
-                href="/reminders"
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                  pathname === '/reminders'
-                    ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                }`}
-              >
-                <AlarmClock className={`w-5 h-5 ${pathname === '/reminders' ? 'text-purple-400' : ''}`} />
-                <span className="font-medium text-sm">Reminders</span>
-              </Link>
-            </div>
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-800">
-            <div className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/20">
-              <p className="text-sm text-gray-400">NovaTok Social</p>
-              <p className="text-xs text-gray-500">Web Version</p>
-            </div>
-          </div>
-        </aside>
+        <Sidebar pathname={pathname} />
 
         {/* Main Content */}
         <main className="flex-1 md:ml-64 pb-20 md:pb-0">
@@ -229,7 +363,7 @@ export default function AppLayout({ children }) {
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation (unchanged) */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50">
           <ul className="flex justify-around items-center">
             {mobileNavItems.map((item) => {
