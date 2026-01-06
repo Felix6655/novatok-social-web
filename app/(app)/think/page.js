@@ -214,6 +214,26 @@ export default function ThinkPage() {
               </>
             )}
           </button>
+          
+          {/* Save last thought */}
+          {lastThought && (
+            <button
+              onClick={handleSaveLastThought}
+              disabled={isLastSaved}
+              className={`
+                w-full mt-3 py-2.5 rounded-xl font-medium text-sm
+                flex items-center justify-center gap-2
+                transition-all duration-200 ease-out
+                ${isLastSaved
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 cursor-default'
+                  : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
+                }
+              `}
+            >
+              <Bookmark className={`w-4 h-4 ${isLastSaved ? 'fill-current' : ''}`} />
+              <span>{isLastSaved ? 'Saved to collection' : 'Save last thought'}</span>
+            </button>
+          )}
         </div>
       </div>
 
