@@ -406,10 +406,11 @@ function VideoReelCard({ reel, isActive, objectUrl, onSaveToggle, onRelink, onDe
 }
 
 // Content Reel Card Component (existing card type)
-function ContentReelCard({ reel, isActive, onSaveToggle }) {
+function ContentReelCard({ reel, isActive, onSaveToggle, onReact }) {
   const config = getReelConfig(reel.type)
   const Icon = TYPE_ICONS[reel.type]
   const [saved, setSaved] = useState(false)
+  const caption = generateContentCaption(reel)
 
   useEffect(() => {
     setSaved(isSaved(reel.type, reel.id))
