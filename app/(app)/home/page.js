@@ -365,7 +365,7 @@ export default function HomePage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-white">Home</h1>
-            <p className="text-sm text-gray-500">What's new for you today</p>
+            <p className="text-sm text-gray-500">What&apos;s new for you today</p>
           </div>
         </div>
         
