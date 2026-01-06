@@ -54,7 +54,7 @@ export function ToastProvider({ children }) {
       
       {/* Toast Container */}
       <div className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t, index) => {
+        {toasts.map((t) => {
           const Icon = toastIcons[t.type] || Info
           return (
             <div
@@ -63,12 +63,9 @@ export function ToastProvider({ children }) {
                 pointer-events-auto
                 flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm
                 shadow-lg min-w-[280px] max-w-[90vw]
-                animate-toast-in
+                animate-[toast-in_0.3s_ease-out_forwards]
                 ${toastStyles[t.type] || toastStyles.info}
               `}
-              style={{
-                animationDelay: `${index * 50}ms`,
-              }}
             >
               <Icon className={`w-5 h-5 flex-shrink-0 ${iconStyles[t.type] || iconStyles.info}`} />
               <span className="flex-1 text-sm font-medium">{t.message}</span>
@@ -82,23 +79,6 @@ export function ToastProvider({ children }) {
           )
         })}
       </div>
-      
-      {/* Toast Animation Styles */}
-      <style jsx global>{`
-        @keyframes toast-in {
-          0% {
-            opacity: 0;
-            transform: translateY(16px) scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        .animate-toast-in {
-          animation: toast-in 0.3s ease-out forwards;
-        }
-      `}</style>
     </ToastContext.Provider>
   )
 }
