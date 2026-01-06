@@ -1,14 +1,9 @@
 import './globals.css'
 
-export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
-}
-
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-[hsl(0,0%,3.9%)] text-white antialiased">
         {children}
       </body>
     </html>
