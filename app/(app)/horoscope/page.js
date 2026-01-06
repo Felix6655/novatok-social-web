@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, Sparkles, Heart, Briefcase, Smile, Loader2 } from 'lucide-react'
+import { Star, Sparkles, Heart, Briefcase, Smile, Loader2, Bookmark } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { generateReading, saveReading, SIGNS } from '@/lib/horoscope/storage'
+import { saveItem, isSaved } from '@/lib/saved/storage'
 
 export default function HoroscopePage() {
   const { toast } = useToast()
