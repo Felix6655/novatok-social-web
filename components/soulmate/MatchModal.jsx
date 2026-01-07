@@ -46,7 +46,7 @@ export default function MatchModal({ profile, onClose, onMessage }) {
               <span className="text-3xl">💕</span>
             </div>
             <h3 className="text-xl font-bold text-white mb-1">
-              {profile.firstName}, {profile.age}
+              {profile.displayName || profile.firstName}, {profile.age}
             </h3>
             <p className="text-gray-500 text-sm">
               {profile.city}, {profile.state}
