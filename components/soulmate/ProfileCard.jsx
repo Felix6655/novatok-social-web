@@ -1,12 +1,14 @@
 'use client'
 
+import { useState } from 'react'
+import Image from 'next/image'
 import { Heart, X, Star, MapPin, Clock, User, Briefcase, GraduationCap, Ruler, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatLastActive, isRecentlyActive } from '@/lib/soulmate/profileGenerator'
-import { useState } from 'react'
 
 /**
  * Profile Card Component
- * Displays a single profile with photo placeholder, info, tags, and optional fields
+ * Displays a single profile with photo, info, tags, and optional fields
+ * Uses next/image for optimized loading with fade-in effect
  */
 export default function ProfileCard({ 
   profile, 
@@ -17,6 +19,8 @@ export default function ProfileCard({
   style = {}
 }) {
   const [showMore, setShowMore] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
   
   if (!profile) return null
   
@@ -39,6 +43,7 @@ export default function ProfileCard({
   } = profile
   
   const recentlyActive = !isOnline && isRecentlyActive(lastActiveMinutes)
+  const showPlaceholder = !photoUrl || imageError
   
   return (
     <div 
@@ -48,29 +53,45 @@ export default function ProfileCard({
       style={style}
     >
       {/* Photo Area */}
-      <div className="h-80 relative overflow-hidden">
-        {photoUrl ? (
-          <div className="w-full h-full bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex items-center justify-center">
-            <img 
-              src={photoUrl} 
-              alt={displayName}
-              className="w-full h-full object-cover"
-              style={{ objectPosition: 'center top' }}
-            />
-          </div>
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-pink-900/40 via-purple-900/30 to-indigo-900/40 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 mx-auto mb-3 flex items-center justify-center border border-pink-500/20">
-                <User className="w-12 h-12 text-pink-300/60" />
-              </div>
-              <p className="text-gray-500 text-sm">Photos coming soon</p>
+      <div className="h-80 relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        {/* Gradient Placeholder (shown while loading or on error) */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-br from-pink-900/40 via-purple-900/30 to-indigo-900/40 flex items-center justify-center transition-opacity duration-500 ${
+            showPlaceholder ? 'opacity-100' : imageLoaded ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          <div className="text-center">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 mx-auto mb-3 flex items-center justify-center border border-pink-500/20">
+              <User className="w-12 h-12 text-pink-300/60" />
             </div>
+            {showPlaceholder && (
+              <p className="text-gray-500 text-sm">Photo unavailable</p>
+            )}
+          </div>
+        </div>
+        
+        {/* Actual Photo with fade-in */}
+        {photoUrl && !imageError && (
+          <div 
+            className={`absolute inset-0 transition-opacity duration-500 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <Image
+              src={photoUrl}
+              alt={displayName}
+              fill
+              sizes="(max-width: 768px) 100vw, 500px"
+              className="object-cover object-top"
+              priority={isTop}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
           </div>
         )}
         
         {/* Status Badges */}
-        <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+        <div className="absolute top-4 right-4 flex flex-col gap-2 items-end z-10">
           {isOnline ? (
             <span className="px-3 py-1.5 rounded-full bg-green-500/90 text-white text-xs font-medium flex items-center gap-1.5 shadow-lg">
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -91,7 +112,7 @@ export default function ProfileCard({
         
         {/* Looking For Badge */}
         {lookingFor && (
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 z-10">
             <span className="px-3 py-1.5 rounded-full bg-purple-600/80 text-white text-xs font-medium shadow-lg backdrop-blur-sm flex items-center gap-1.5">
               <Search className="w-3 h-3" />
               {lookingFor}
@@ -99,12 +120,12 @@ export default function ProfileCard({
           </div>
         )}
         
-        {/* Gradient overlay at bottom */}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[hsl(0,0%,7%)] via-[hsl(0,0%,7%)]/80 to-transparent" />
+        {/* Gradient overlay at bottom for text readability */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[hsl(0,0%,7%)] via-[hsl(0,0%,7%)]/80 to-transparent z-[5]" />
       </div>
       
       {/* Info Section */}
-      <div className="p-5 -mt-12 relative">
+      <div className="p-5 -mt-12 relative z-10">
         {/* Name & Age */}
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xl font-bold text-white">
