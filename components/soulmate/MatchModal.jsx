@@ -37,7 +37,7 @@ export default function MatchModal({ profile, onClose, onMessage }) {
             It's a Match!
           </h2>
           <p className="text-gray-400 mb-6">
-            You and <span className="text-white font-medium">{profile.firstName}</span> liked each other
+            You and <span className="text-white font-medium">{profile.displayName || profile.firstName}</span> liked each other
           </p>
           
           {/* Profile preview */}
