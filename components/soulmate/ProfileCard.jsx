@@ -50,11 +50,14 @@ export default function ProfileCard({
       {/* Photo Area */}
       <div className="h-80 relative overflow-hidden">
         {photoUrl ? (
-          <img 
-            src={photoUrl} 
-            alt={displayName}
-            className="w-full h-full object-cover"
-          />
+          <div className="w-full h-full bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex items-center justify-center">
+            <img 
+              src={photoUrl} 
+              alt={displayName}
+              className="w-full h-full object-cover"
+              style={{ objectPosition: 'center top' }}
+            />
+          </div>
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-900/40 via-purple-900/30 to-indigo-900/40 flex items-center justify-center">
             <div className="text-center">
