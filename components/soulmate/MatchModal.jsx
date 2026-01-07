@@ -42,9 +42,19 @@ export default function MatchModal({ profile, onClose, onMessage }) {
           
           {/* Profile preview */}
           <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-6 mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 mx-auto mb-3 flex items-center justify-center border-2 border-pink-500/30">
-              <span className="text-3xl">💕</span>
-            </div>
+            {profile.photoUrl ? (
+              <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden border-2 border-pink-500/30 bg-gradient-to-br from-[#1a1a2e] to-[#0f3460]">
+                <img 
+                  src={profile.photoUrl} 
+                  alt={profile.displayName || profile.firstName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 mx-auto mb-3 flex items-center justify-center border-2 border-pink-500/30">
+                <span className="text-3xl">💕</span>
+              </div>
+            )}
             <h3 className="text-xl font-bold text-white mb-1">
               {profile.displayName || profile.firstName}, {profile.age}
             </h3>
