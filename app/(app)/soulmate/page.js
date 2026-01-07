@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Heart, X, Star, Dna, Settings, Loader2, Shield, ChevronRight, RotateCcw, Users, Sparkles } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Heart, X, Star, Dna, Settings, Loader2, Shield, ChevronRight, RotateCcw, Users, Sparkles, Filter, RefreshCw } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { getDnaProfile, saveDnaProfile } from '@/lib/dna/storage'
 import { 
@@ -11,15 +11,17 @@ import {
   recordSuperLike, 
   getStats,
   getMatches,
-  resetAllData
+  resetAllData,
+  loadProfiles as loadAllProfiles
 } from '@/lib/soulmate/storage'
-import ProfileCard from '@/components/soulmate/ProfileCard'
+import ProfileCard, { ProfileCardSkeleton } from '@/components/soulmate/ProfileCard'
 import MatchModal from '@/components/soulmate/MatchModal'
 
 export default function SoulMatePage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [showDnaModal, setShowDnaModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -27,12 +29,12 @@ export default function SoulMatePage() {
   const [isSavingDna, setIsSavingDna] = useState(false)
   
   // Profile browsing state
-  const [profiles, setProfiles] = useState([])
+  const [allProfiles, setAllProfiles] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [stats, setStats] = useState({ liked: 0, passed: 0, superliked: 0, matches: 0 })
   const [matchedProfile, setMatchedProfile] = useState(null)
   
-  // Preferences
+  // Preferences (apply immediately)
   const [preferences, setPreferences] = useState({
     minAge: 18,
     maxAge: 40,
@@ -59,23 +61,37 @@ export default function SoulMatePage() {
     setStats(getStats())
   }
   
-  const loadProfiles = useCallback(() => {
+  // Filtered profiles based on current preferences (computed)
+  const filteredProfiles = useMemo(() => {
+    return allProfiles.filter(p => {
+      if (p.age < preferences.minAge || p.age > preferences.maxAge) return false
+      if (p.distanceMiles > preferences.maxDistance) return false
+      return true
+    })
+  }, [allProfiles, preferences])
+  
+  // Load profiles with skeleton loading
+  const loadProfiles = useCallback(async () => {
     setIsLoading(true)
+    setIsInitialLoad(true)
     
-    // Use setTimeout to prevent blocking the UI
-    setTimeout(() => {
-      const unviewed = getUnviewedProfiles({
-        minAge: preferences.minAge,
-        maxAge: preferences.maxAge,
-        maxDistance: preferences.maxDistance
-      })
-      
-      // Shuffle profiles for variety
-      const shuffled = [...unviewed].sort(() => Math.random() - 0.5)
-      setProfiles(shuffled.slice(0, 100)) // Load 100 at a time for performance
-      setCurrentIndex(0)
-      setIsLoading(false)
-    }, 100)
+    // Simulate realistic loading time (500-900ms)
+    const loadTime = 500 + Math.random() * 400
+    
+    await new Promise(resolve => setTimeout(resolve, loadTime))
+    
+    const unviewed = getUnviewedProfiles({
+      minAge: preferences.minAge,
+      maxAge: preferences.maxAge,
+      maxDistance: preferences.maxDistance
+    })
+    
+    // Shuffle profiles for variety
+    const shuffled = [...unviewed].sort(() => Math.random() - 0.5)
+    setAllProfiles(shuffled.slice(0, 200)) // Load 200 at a time for performance
+    setCurrentIndex(0)
+    setIsLoading(false)
+    setIsInitialLoad(false)
   }, [preferences])
 
   const handleStartMatching = () => {
@@ -83,17 +99,23 @@ export default function SoulMatePage() {
     loadProfiles()
   }
   
-  const currentProfile = profiles[currentIndex]
+  // Current profile from filtered list
+  const currentProfile = filteredProfiles[currentIndex]
+  
+  // Check if there are more profiles in the filtered set
+  const hasMoreProfiles = currentIndex < filteredProfiles.length - 1
+  const noProfilesInSettings = filteredProfiles.length === 0 && allProfiles.length > 0
+  const noProfilesAtAll = allProfiles.length === 0 && !isLoading
   
   const moveToNext = useCallback(() => {
-    if (currentIndex < profiles.length - 1) {
+    if (currentIndex < filteredProfiles.length - 1) {
       setCurrentIndex(prev => prev + 1)
-    } else if (currentIndex >= profiles.length - 1) {
-      // Load more profiles
+    } else {
+      // Try to load more
       loadProfiles()
     }
     loadStats()
-  }, [currentIndex, profiles.length, loadProfiles])
+  }, [currentIndex, filteredProfiles.length, loadProfiles])
 
   const handleLike = useCallback((profile) => {
     const isMatch = recordLike(profile.id)
@@ -129,22 +151,29 @@ export default function SoulMatePage() {
   
   const handleMessageMatch = (profile) => {
     setMatchedProfile(null)
-    toast({ type: 'info', message: `Messaging ${profile.firstName} coming soon!` })
+    toast({ type: 'info', message: `Messaging ${profile.displayName} coming soon!` })
   }
   
   const handleResetData = () => {
     resetAllData()
     loadStats()
     setCurrentIndex(0)
+    setAllProfiles([])
     loadProfiles()
     toast({ type: 'success', message: 'Data reset!' })
     setShowSettingsModal(false)
   }
   
-  const handleSavePreferences = () => {
+  // Update preferences and immediately re-filter
+  const updatePreference = (key, value) => {
+    setPreferences(p => ({ ...p, [key]: value }))
+    // Reset to first profile when filters change
+    setCurrentIndex(0)
+  }
+  
+  const handleRefreshProfiles = () => {
     loadProfiles()
-    setShowSettingsModal(false)
-    toast({ type: 'success', message: 'Preferences updated!' })
+    toast({ type: 'info', message: 'Refreshing profiles...' })
   }
 
   const handleSaveDna = async () => {
@@ -338,30 +367,114 @@ export default function SoulMatePage() {
         </>
       ) : (
         <>
+          {/* Inline Filter Bar */}
+          <div className="bg-[hsl(0,0%,7%)] rounded-xl border border-gray-800 p-3">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <span className="text-xs text-gray-500">Filters:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Age</span>
+                <input 
+                  type="number" 
+                  value={preferences.minAge}
+                  onChange={(e) => updatePreference('minAge', parseInt(e.target.value) || 18)}
+                  min="18" max="40"
+                  className="w-14 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-pink-500/50" 
+                />
+                <span className="text-gray-600">-</span>
+                <input 
+                  type="number" 
+                  value={preferences.maxAge}
+                  onChange={(e) => updatePreference('maxAge', parseInt(e.target.value) || 40)}
+                  min="18" max="40"
+                  className="w-14 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-pink-500/50" 
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Max</span>
+                <input 
+                  type="number" 
+                  value={preferences.maxDistance}
+                  onChange={(e) => updatePreference('maxDistance', parseInt(e.target.value) || 25)}
+                  min="1" max="50"
+                  className="w-14 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-pink-500/50" 
+                />
+                <span className="text-xs text-gray-400">mi</span>
+              </div>
+              <button
+                onClick={handleRefreshProfiles}
+                disabled={isLoading}
+                className="ml-auto p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                title="Refresh profiles"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-400 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+        
           {/* Profile Browsing */}
-          {isLoading ? (
+          {isInitialLoad ? (
+            // Skeleton loading state
+            <ProfileCardSkeleton />
+          ) : noProfilesInSettings ? (
+            // No profiles match current filter settings
             <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 h-[500px] flex items-center justify-center">
-              <div className="text-center">
-                <Loader2 className="w-10 h-10 animate-spin text-pink-400 mx-auto mb-3" />
-                <p className="text-gray-400">Loading profiles...</p>
+              <div className="text-center px-6">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 mx-auto mb-4 flex items-center justify-center border border-amber-500/30">
+                  <Filter className="w-8 h-8 text-amber-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">No Profiles in Your Settings</h3>
+                <p className="text-gray-400 text-sm mb-4 max-w-xs mx-auto">
+                  Try expanding your age range or distance to see more profiles.
+                </p>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-gray-800/50 text-left">
+                    <p className="text-xs text-gray-500 mb-1">Current filters:</p>
+                    <p className="text-sm text-gray-300">
+                      Ages {preferences.minAge}–{preferences.maxAge} • Within {preferences.maxDistance} miles
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPreferences({ minAge: 18, maxAge: 40, maxDistance: 50 })
+                      setCurrentIndex(0)
+                    }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-medium hover:from-amber-500 hover:to-orange-500 transition-colors"
+                  >
+                    Expand Filters
+                  </button>
+                </div>
               </div>
             </div>
-          ) : profiles.length === 0 ? (
+          ) : noProfilesAtAll ? (
+            // No more profiles at all
             <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 h-[500px] flex items-center justify-center">
               <div className="text-center px-6">
                 <div className="w-16 h-16 rounded-full bg-gray-800 mx-auto mb-4 flex items-center justify-center">
                   <Heart className="w-8 h-8 text-gray-600" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">No More Profiles</h3>
+                <h3 className="text-xl font-bold text-white mb-2">You've Seen Everyone!</h3>
                 <p className="text-gray-400 text-sm mb-4">
-                  You've seen everyone! Try adjusting your preferences or check back later.
+                  Amazing! You've viewed all available profiles. Check back later for new people.
                 </p>
-                <button
-                  onClick={() => setShowSettingsModal(true)}
-                  className="px-6 py-3 rounded-xl bg-gray-800 text-white font-medium hover:bg-gray-700 transition-colors"
-                >
-                  Adjust Preferences
-                </button>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={handleResetData}
+                    className="px-6 py-3 rounded-xl border border-gray-700 text-gray-300 font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Start Over
+                  </button>
+                  <button
+                    onClick={handleRefreshProfiles}
+                    className="px-6 py-3 rounded-xl bg-pink-600 text-white font-medium hover:bg-pink-500 transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
           ) : currentProfile ? (
@@ -372,13 +485,17 @@ export default function SoulMatePage() {
               onSuperLike={handleSuperLike}
               isTop={true}
             />
+          ) : isLoading ? (
+            <ProfileCardSkeleton />
           ) : null}
           
           {/* Progress indicator */}
-          {!isLoading && profiles.length > 0 && (
+          {!isLoading && !noProfilesInSettings && !noProfilesAtAll && filteredProfiles.length > 0 && (
             <div className="text-center text-xs text-gray-500">
-              Profile {currentIndex + 1} of {profiles.length}
-              {profiles.length >= 100 && ' (more available)'}
+              Profile {currentIndex + 1} of {filteredProfiles.length}
+              {filteredProfiles.length < allProfiles.length && (
+                <span className="text-gray-600"> • {allProfiles.length - filteredProfiles.length} filtered out</span>
+              )}
             </div>
           )}
         </>
@@ -464,7 +581,7 @@ export default function SoulMatePage() {
       {/* Settings Modal */}
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-[hsl(0,0%,7%)] border border-gray-800 rounded-2xl max-w-md w-full p-6">
+          <div className="bg-[hsl(0,0%,7%)] border border-gray-800 rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center border border-gray-600/30">
                 <Settings className="w-6 h-6 text-gray-400" />
@@ -482,7 +599,7 @@ export default function SoulMatePage() {
                   <input 
                     type="number" 
                     value={preferences.minAge}
-                    onChange={(e) => setPreferences(p => ({ ...p, minAge: parseInt(e.target.value) || 18 }))}
+                    onChange={(e) => updatePreference('minAge', parseInt(e.target.value) || 18)}
                     min="18"
                     max="40"
                     className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-pink-500/50" 
@@ -491,7 +608,7 @@ export default function SoulMatePage() {
                   <input 
                     type="number" 
                     value={preferences.maxAge}
-                    onChange={(e) => setPreferences(p => ({ ...p, maxAge: parseInt(e.target.value) || 40 }))}
+                    onChange={(e) => updatePreference('maxAge', parseInt(e.target.value) || 40)}
                     min="18"
                     max="40"
                     className="flex-1 px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-pink-500/50" 
@@ -506,7 +623,7 @@ export default function SoulMatePage() {
                   min="1"
                   max="50"
                   value={preferences.maxDistance}
-                  onChange={(e) => setPreferences(p => ({ ...p, maxDistance: parseInt(e.target.value) }))}
+                  onChange={(e) => updatePreference('maxDistance', parseInt(e.target.value))}
                   className="w-full mt-2 accent-pink-500" 
                 />
               </div>
@@ -550,15 +667,9 @@ export default function SoulMatePage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="flex-1 py-3 rounded-xl border border-gray-700 text-gray-300 font-medium hover:bg-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSavePreferences}
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 text-white font-medium hover:from-pink-500 hover:to-rose-500 transition-colors"
               >
-                Save
+                Done
               </button>
             </div>
           </div>
