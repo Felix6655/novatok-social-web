@@ -1,12 +1,20 @@
 'use client'
 
-import { Heart, MessageCircle, X } from 'lucide-react'
+import { useState } from 'react'
+import Image from 'next/image'
+import { Heart, MessageCircle, X, User } from 'lucide-react'
 
 /**
  * Match Modal - Shows when user gets a match
+ * Uses next/image for optimized photo loading with fallback
  */
 export default function MatchModal({ profile, onClose, onMessage }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  
   if (!profile) return null
+  
+  const showPlaceholder = !profile.photoUrl || imageError
   
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
@@ -40,21 +48,35 @@ export default function MatchModal({ profile, onClose, onMessage }) {
             You and <span className="text-white font-medium">{profile.displayName || profile.firstName}</span> liked each other
           </p>
           
-          {/* Profile preview */}
+          {/* Profile preview with photo */}
           <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-6 mb-6">
-            {profile.photoUrl ? (
-              <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden border-2 border-pink-500/30 bg-gradient-to-br from-[#1a1a2e] to-[#0f3460]">
-                <img 
-                  src={profile.photoUrl} 
+            {/* Profile Photo */}
+            <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden border-2 border-pink-500/30 relative bg-gradient-to-br from-pink-900/40 via-purple-900/30 to-indigo-900/40">
+              {/* Placeholder */}
+              <div 
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+                  showPlaceholder ? 'opacity-100' : imageLoaded ? 'opacity-0' : 'opacity-100'
+                }`}
+              >
+                <User className="w-10 h-10 text-pink-300/60" />
+              </div>
+              
+              {/* Actual photo */}
+              {profile.photoUrl && !imageError && (
+                <Image
+                  src={profile.photoUrl}
                   alt={profile.displayName || profile.firstName}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="96px"
+                  className={`object-cover transition-opacity duration-300 ${
+                    imageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
                 />
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 mx-auto mb-3 flex items-center justify-center border-2 border-pink-500/30">
-                <span className="text-3xl">💕</span>
-              </div>
-            )}
+              )}
+            </div>
+            
             <h3 className="text-xl font-bold text-white mb-1">
               {profile.displayName || profile.firstName}, {profile.age}
             </h3>
