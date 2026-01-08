@@ -2,6 +2,7 @@
 
 import { Heart, Play, Pause, MoreHorizontal } from 'lucide-react'
 import { formatDuration, formatPlays } from '@/lib/music/data'
+import { getGradientCSS, getTrackArtworkSVG } from '@/lib/music/artwork'
 
 export default function TrackCard({ 
   track, 
@@ -14,6 +15,9 @@ export default function TrackCard({
   compact = false
 }) {
   if (!track) return null
+  
+  const gradientCSS = getGradientCSS(track.id, 'track')
+  const artworkSVG = getTrackArtworkSVG(track.id, 200)
   
   const handlePlayPause = () => {
     if (isCurrentTrack && isPlaying) {
@@ -34,10 +38,10 @@ export default function TrackCard({
         onClick={handlePlayPause}
       >
         {/* Album Art */}
-        <div className={`w-10 h-10 rounded-md bg-gradient-to-br ${track.coverGradient} flex items-center justify-center flex-shrink-0 relative overflow-hidden`}>
-          <span className="text-white/80 text-xs font-bold">
-            {track.title.charAt(0)}
-          </span>
+        <div 
+          className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 relative overflow-hidden"
+          style={{ background: gradientCSS }}
+        >
           <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
             isCurrentTrack ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}>
@@ -69,17 +73,12 @@ export default function TrackCard({
         isCurrentTrack ? 'ring-1 ring-purple-500/50' : ''
       }`}
     >
-      {/* Album Art */}
+      {/* Album Art with Generated Artwork */}
       <div 
-        className={`aspect-square rounded-lg bg-gradient-to-br ${track.coverGradient} mb-3 relative overflow-hidden cursor-pointer`}
+        className="aspect-square rounded-lg mb-3 relative overflow-hidden cursor-pointer"
+        style={{ backgroundImage: `url("${artworkSVG}")`, backgroundSize: 'cover' }}
         onClick={handlePlayPause}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white/30 text-4xl font-bold">
-            {track.title.charAt(0)}
-          </span>
-        </div>
-        
         {/* Play overlay */}
         <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
           isCurrentTrack ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -97,6 +96,17 @@ export default function TrackCard({
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-[10px] text-white/80">
           {track.bpm} BPM
         </div>
+        
+        {/* Playing indicator */}
+        {isCurrentTrack && isPlaying && (
+          <div className="absolute bottom-2 right-2">
+            <div className="flex items-end gap-0.5 h-4">
+              <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '40%' }} />
+              <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '80%', animationDelay: '0.1s' }} />
+              <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '60%', animationDelay: '0.2s' }} />
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Track Info */}
