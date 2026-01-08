@@ -114,11 +114,19 @@ export default function MusicPage() {
   }, [mounted, currentTrack, volume, shuffle, repeat])
   
   const handlePlayTrack = useCallback((track) => {
+    // End previous session if different track
+    if (currentTrack && currentTrack.id !== track.id) {
+      endListeningSession()
+    }
+    
     setCurrentTrack(track)
     setIsPlaying(true)
     setProgress(0)
     addToRecentTracks(track.id)
     setRecentTracks(getRecentTracks())
+    
+    // Start new listening session for rewards
+    startListeningSession(track.id, track.duration)
     
     // Set queue to filtered tracks
     const tracks = getTracksByGenre(selectedGenre)
@@ -126,7 +134,7 @@ export default function MusicPage() {
     if (trackIndex > -1) {
       setQueue(tracks.slice(trackIndex + 1))
     }
-  }, [selectedGenre])
+  }, [selectedGenre, currentTrack])
   
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying)
