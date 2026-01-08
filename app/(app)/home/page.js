@@ -11,8 +11,8 @@ import { getFeedItems, formatFeedDate, FEED_TYPES } from '@/lib/feed/aggregate'
 import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
 import { useToast } from '@/components/ui/ToastProvider'
 import ContinueListeningWidget from '@/components/music/ContinueListeningWidget'
-import { addToRecentTracks, getRecentTracks } from '@/lib/music/player'
-import { getTrackById } from '@/lib/music/data'
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext'
+import { getTracksByGenre } from '@/lib/music/data'
 
 // Type configurations
 const TYPE_CONFIG = {
