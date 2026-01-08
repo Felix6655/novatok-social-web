@@ -381,6 +381,28 @@ export default function AppLayout({ children }) {
 
   return (
     <ToastProvider>
+      <MusicPlayerProvider>
+        <AppLayoutContent pathname={pathname}>
+          {children}
+        </AppLayoutContent>
+      </MusicPlayerProvider>
+    </ToastProvider>
+  )
+}
+
+// Inner component that can access MusicPlayer context
+function AppLayoutContent({ pathname, children }) {
+  // Try to get music player context - it might not exist yet during SSR
+  let hasCurrentTrack = false
+  try {
+    const musicPlayer = useMusicPlayer()
+    hasCurrentTrack = !!musicPlayer?.currentTrack
+  } catch {
+    // Context not available yet, that's fine
+  }
+
+  return (
+    <>
       {/* Premium Constellation Background - behind all content */}
       <ConstellationBackground />
       
@@ -389,21 +411,24 @@ export default function AppLayout({ children }) {
           {/* Desktop Sidebar */}
           <Sidebar pathname={pathname} />
 
-          {/* Main Content - Add extra padding on /music route to accommodate MiniPlayer above footer */}
-          <main className={`flex-1 md:ml-64 pb-20 md:pb-0 ${pathname === '/music' ? 'md:pb-20' : ''}`}>
+          {/* Main Content - Add bottom padding when MiniPlayer is visible */}
+          <main className={`flex-1 md:ml-64 pb-20 ${hasCurrentTrack ? 'md:pb-24' : 'md:pb-0'}`}>
             <div className="max-w-4xl mx-auto p-4 md:p-6 animate-fade-in">
               {children}
             </div>
           </main>
         </div>
 
-        {/* Site-wide Footer - hidden on mobile (mobile has bottom nav), extra bottom margin on music page */}
-        <div className={`hidden md:block md:ml-64 ${pathname === '/music' ? 'mb-20' : ''}`}>
+        {/* Site-wide Footer - extra bottom margin when MiniPlayer is visible */}
+        <div className={`hidden md:block md:ml-64 ${hasCurrentTrack ? 'mb-20' : ''}`}>
           <Footer />
         </div>
 
-        {/* Mobile Bottom Navigation (unchanged) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50">
+        {/* Global Mini Player - visible on all pages when a track is loaded */}
+        <GlobalMiniPlayer />
+
+        {/* Mobile Bottom Navigation */}
+        <nav className={`md:hidden fixed left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50 ${hasCurrentTrack ? 'bottom-16' : 'bottom-0'}`}>
           <ul className="flex justify-around items-center">
             {mobileNavItems.map((item) => {
               const isActive = pathname === item.href
@@ -433,6 +458,6 @@ export default function AppLayout({ children }) {
       
       {/* Global Reminder Popup */}
       <ReminderPopup />
-    </ToastProvider>
+    </>
   )
 }
