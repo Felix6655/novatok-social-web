@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Lightbulb, Send, Lock, Unlock, Sparkles, Bookmark } from 'lucide-react'
+import { Lightbulb, Send, Lock, Unlock, Sparkles, Bookmark, Music, X } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { saveThought, isQuietVoicesUnlocked, unlockQuietVoices, getThoughtCount } from '@/lib/think/storage'
 import { saveItem, isSaved } from '@/lib/saved/storage'
+import { TRACKS, getTrackById } from '@/lib/music/data'
+import { MusicAttachmentPreview, MusicTrackPicker } from '@/components/music/MusicAttachment'
+import { addToRecentTracks } from '@/lib/music/player'
 
 const MOODS = [
   { id: 'inspired', label: 'Inspired', emoji: '🌟' },
@@ -23,6 +26,8 @@ export default function ThinkPage() {
   const [mounted, setMounted] = useState(false)
   const [lastThought, setLastThought] = useState(null)
   const [isLastSaved, setIsLastSaved] = useState(false)
+  const [attachedTrack, setAttachedTrack] = useState(null)
+  const [showTrackPicker, setShowTrackPicker] = useState(false)
   const textareaRef = useRef(null)
   const { toast } = useToast()
 
