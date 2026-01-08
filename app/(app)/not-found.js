@@ -1,3 +1,30 @@
+/**
+ * App-Level Not Found Handler (app/(app)/not-found.js)
+ * 
+ * WHEN THIS TRIGGERS:
+ * - Only when Next.js cannot find a matching route within the (app) group
+ * - When notFound() is explicitly called from a page/component in this group
+ * - Navigation to non-existent paths under the authenticated app layout
+ * 
+ * WHEN THIS DOES NOT TRIGGER:
+ * - Valid routes (e.g., /home, /music, /soulmate) - they have page.js files
+ * - Valid routes with query params (e.g., /music?tab=liked) - route still matches
+ * - Valid routes with hash (e.g., /home#feed) - route still matches  
+ * - Dynamic routes that exist (e.g., /u/[username]) - handled by dynamic route
+ * - Redirected aliases (e.g., /go-live, /chat-with-ais) - redirect in next.config.js runs first
+ * - API routes - handled separately
+ * 
+ * ROUTING ORDER (Next.js evaluates in this order):
+ * 1. next.config.js redirects (e.g., /go-live -> /live)
+ * 2. Static routes (exact matches like /home, /music)
+ * 3. Dynamic routes (e.g., /u/[username])
+ * 4. Catch-all routes (if any)
+ * 5. not-found.js (only if nothing above matches)
+ * 
+ * The auto-redirect is safe because this component only renders
+ * AFTER Next.js has exhausted all possible route matches.
+ */
+
 'use client'
 
 import { useEffect } from 'react'
@@ -11,10 +38,11 @@ export default function NotFound() {
   const { toast } = useToast()
   
   useEffect(() => {
-    // Show toast notification
+    // Show toast notification - confirms this is a real 404
     toast({ type: 'info', message: 'Page not found. Redirecting to Home...' })
     
-    // Redirect after a short delay
+    // Auto-redirect after a short delay
+    // This only runs on true 404s - Next.js routing has already failed to match
     const timeout = setTimeout(() => {
       router.push('/home')
     }, 2000)
@@ -30,8 +58,8 @@ export default function NotFound() {
       
       <h1 className="text-2xl font-bold text-white mb-2">Page Not Found</h1>
       <p className="text-gray-500 mb-6 max-w-md">
-        The page you're looking for doesn't exist or has been moved.
-        You'll be redirected to Home shortly.
+        The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        You&apos;ll be redirected to Home shortly.
       </p>
       
       <Link
