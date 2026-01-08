@@ -15,9 +15,6 @@ import { isDevelopment } from '@/lib/supabase/health'
 import ConstellationBackground from '@/components/ui/ConstellationBackground'
 import Footer from '@/components/Footer'
 
-// External link - PERMANENT: DO NOT REMOVE OR GATE BEHIND FLAGS
-const NOVATOK_MUSIC_URL = 'https://cosmic-player-1.preview.emergentagent.com'
-
 // Sidebar navigation structure
 const sidebarSections = [
   {
@@ -28,7 +25,7 @@ const sidebarSections = [
       { href: '/home', label: 'Home', icon: Home },
       { href: '/reels', label: 'Reels', icon: Play },
       { href: '/rooms', label: 'Rooms', icon: Layout },
-      { href: NOVATOK_MUSIC_URL, label: 'NovaTok Music', icon: Music, isExternal: true },
+      { href: '/music', label: 'NovaTok Music', icon: Music },
       { href: '/think', label: 'Think', icon: Lightbulb },
       { href: '/thinking', label: 'Thinking', icon: Brain },
       { href: '/soulmate', label: 'SoulMate', icon: Heart },
