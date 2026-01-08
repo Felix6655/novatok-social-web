@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Play, ChevronRight, Music } from 'lucide-react'
 import { getRecentTracks } from '@/lib/music/player'
-import { getTrackById, formatDuration } from '@/lib/music/data'
-import { getGradientCSS, getTrackArtworkSVG } from '@/lib/music/artwork'
+import { getTrackById } from '@/lib/music/data'
+import { getTrackArtworkSVG } from '@/lib/music/artwork'
 
 export default function ContinueListeningWidget({ onPlayTrack, maxItems = 8 }) {
   const [recentTracks, setRecentTracks] = useState([])
