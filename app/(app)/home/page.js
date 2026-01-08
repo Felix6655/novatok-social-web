@@ -392,6 +392,9 @@ export default function HomePage() {
       {/* Quick Actions */}
       <QuickActionsBar />
 
+      {/* Continue Listening Widget */}
+      <ContinueListeningWidget onPlayTrack={handlePlayTrack} maxItems={8} />
+
       {/* Feed */}
       {isLoading ? (
         <LoadingState />
