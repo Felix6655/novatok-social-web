@@ -450,6 +450,7 @@ export default function MusicPage() {
             isLiked={likedTracks.includes(currentTrack.id)}
             shuffle={shuffle}
             repeat={repeat}
+            rewardsState={rewardsState}
             onPlayPause={handlePlayPause}
             onNext={handleNext}
             onPrevious={handlePrevious}
