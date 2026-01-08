@@ -318,6 +318,7 @@ function LoadingState() {
 export default function HomePage() {
   const { toast } = useToast()
   const router = useRouter()
+  const { playTrack } = useMusicPlayer()
   const [feedItems, setFeedItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -348,10 +349,10 @@ export default function HomePage() {
     toast({ type: 'success', message: saved ? 'Saved ✓' : 'Removed from Saved' })
   }
 
-  // Handler to play track and navigate to music page
+  // Handler to play track using the global player
   const handlePlayTrack = (track) => {
-    addToRecentTracks(track.id)
-    router.push('/music')
+    const allTracks = getTracksByGenre('all')
+    playTrack(track, allTracks)
     toast({ type: 'success', message: `Playing "${track.title}"` })
   }
 
