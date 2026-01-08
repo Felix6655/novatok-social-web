@@ -14,6 +14,8 @@ import { supabase, getSession, signOut } from '@/lib/supabase/client'
 import { isDevelopment } from '@/lib/supabase/health'
 import ConstellationBackground from '@/components/ui/ConstellationBackground'
 import Footer from '@/components/Footer'
+import { MusicPlayerProvider, useMusicPlayer } from '@/contexts/MusicPlayerContext'
+import GlobalMiniPlayer from '@/components/music/GlobalMiniPlayer'
 
 // Sidebar navigation structure
 const sidebarSections = [
