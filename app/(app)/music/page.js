@@ -474,6 +474,12 @@ export default function MusicPage() {
           />
         </div>
       )}
+      
+      {/* Rewards Modal */}
+      <RewardsModal 
+        isOpen={showRewardsModal} 
+        onClose={() => setShowRewardsModal(false)} 
+      />
     </div>
   )
 }
