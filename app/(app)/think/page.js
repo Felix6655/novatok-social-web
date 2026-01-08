@@ -338,6 +338,14 @@ export default function ThinkPage() {
         </div>
       </div>
 
+      {/* Track Picker Modal */}
+      {showTrackPicker && (
+        <MusicTrackPicker 
+          tracks={TRACKS}
+          onSelect={(track) => setAttachedTrack(track)}
+          onClose={() => setShowTrackPicker(false)}
+        />
+      )}
     </div>
   )
 }
