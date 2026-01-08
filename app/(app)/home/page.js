@@ -317,6 +317,7 @@ function LoadingState() {
 
 export default function HomePage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [feedItems, setFeedItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -345,6 +346,13 @@ export default function HomePage() {
 
   const handleSaveToggle = (saved) => {
     toast({ type: 'success', message: saved ? 'Saved ✓' : 'Removed from Saved' })
+  }
+
+  // Handler to play track and navigate to music page
+  const handlePlayTrack = (track) => {
+    addToRecentTracks(track.id)
+    router.push('/music')
+    toast({ type: 'success', message: `Playing "${track.title}"` })
   }
 
   if (!mounted) {
