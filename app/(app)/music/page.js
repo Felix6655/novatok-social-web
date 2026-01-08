@@ -260,6 +260,18 @@ export default function MusicPage() {
             <p className="text-sm text-gray-500">Discover your sound</p>
           </div>
         </div>
+        
+        {/* Rewards Badge */}
+        <button
+          onClick={() => setShowRewardsModal(true)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all"
+        >
+          <Coins className="w-4 h-4 text-amber-400" />
+          <div className="text-left">
+            <p className="text-sm font-semibold text-amber-400">{formatTokens(rewardsState?.totalTokens || 0)}</p>
+            <p className="text-[10px] text-gray-500">tokens</p>
+          </div>
+        </button>
       </div>
       
       {/* Search */}
