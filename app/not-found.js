@@ -1,3 +1,22 @@
+/**
+ * Global Not Found Handler (app/not-found.js)
+ * 
+ * WHEN THIS TRIGGERS:
+ * - Only when Next.js cannot find a matching route at the root level
+ * - Routes outside the (app) group that don't exist
+ * - Direct navigation to completely invalid URLs
+ * 
+ * WHEN THIS DOES NOT TRIGGER:
+ * - Valid routes with query params (e.g., /home?tab=1) - route still matches
+ * - Valid routes with hash fragments (e.g., /home#section) - route still matches
+ * - Dynamic segments that exist (e.g., /u/[username]) - handled by dynamic route
+ * - Routes inside (app) group - those use their own not-found.js
+ * - Redirected routes (e.g., /go-live -> /live) - redirect happens first
+ * 
+ * The auto-redirect to /home only happens after confirming no route matches.
+ * Next.js routing is evaluated BEFORE this handler runs.
+ */
+
 'use client'
 
 import { useEffect } from 'react'
@@ -9,7 +28,8 @@ export default function GlobalNotFound() {
   const router = useRouter()
   
   useEffect(() => {
-    // Auto-redirect after delay
+    // Auto-redirect after delay - only runs on true 404s
+    // Next.js has already confirmed no route matches before rendering this
     const timeout = setTimeout(() => {
       router.push('/home')
     }, 3000)
@@ -25,7 +45,7 @@ export default function GlobalNotFound() {
       
       <h1 className="text-3xl font-bold text-white mb-3">Page Not Found</h1>
       <p className="text-gray-500 mb-8 max-w-md">
-        The page you're looking for doesn't exist or has been moved.
+        The page you&apos;re looking for doesn&apos;t exist or has been moved.
         Redirecting you to Home in a few seconds...
       </p>
       
