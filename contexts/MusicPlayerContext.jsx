@@ -42,9 +42,20 @@ export function MusicPlayerProvider({ children }) {
   // Debug state
   const [debugInfo, setDebugInfo] = useState({})
   
-  // Refs for interval
+  // Refs for values that need to be accessed in intervals without re-creating
   const progressIntervalRef = useRef(null)
-  const lastToastTimeRef = useRef(0)
+  const volumeRef = useRef(0.8)
+  const currentTrackRef = useRef(null)
+  const repeatRef = useRef('off')
+  const shuffleRef = useRef(false)
+  const queueRef = useRef([])
+
+  // Keep refs in sync
+  useEffect(() => { volumeRef.current = volume }, [volume])
+  useEffect(() => { currentTrackRef.current = currentTrack }, [currentTrack])
+  useEffect(() => { repeatRef.current = repeat }, [repeat])
+  useEffect(() => { shuffleRef.current = shuffle }, [shuffle])
+  useEffect(() => { queueRef.current = queue }, [queue])
 
   // Initialize on mount
   useEffect(() => {
