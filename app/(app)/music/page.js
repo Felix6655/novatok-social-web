@@ -141,8 +141,14 @@ export default function MusicPage() {
   }
   
   const handleNext = useCallback(() => {
+    // End current session
+    endListeningSession()
+    
     if (repeat === 'one') {
       setProgress(0)
+      if (currentTrack) {
+        startListeningSession(currentTrack.id, currentTrack.duration)
+      }
       return
     }
     
@@ -154,6 +160,7 @@ export default function MusicPage() {
       setQueue(prev => prev.filter(t => t.id !== nextTrack.id))
       setProgress(0)
       addToRecentTracks(nextTrack.id)
+      startListeningSession(nextTrack.id, nextTrack.duration)
     } else if (repeat === 'all') {
       const tracks = getTracksByGenre(selectedGenre)
       if (tracks.length > 0) {
@@ -162,7 +169,7 @@ export default function MusicPage() {
     } else {
       setIsPlaying(false)
     }
-  }, [queue, shuffle, repeat, selectedGenre, handlePlayTrack])
+  }, [queue, shuffle, repeat, selectedGenre, handlePlayTrack, currentTrack])
   
   const handlePrevious = () => {
     if (progress > 10) {
