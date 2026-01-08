@@ -1,6 +1,7 @@
 'use client'
 
-import { Users, MessageCircle, Calendar, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { Users, MessageCircle, Calendar, Shield, Home } from 'lucide-react'
 
 export default function GroupsPage() {
   return (
@@ -31,7 +32,7 @@ export default function GroupsPage() {
             Create and join communities around shared interests. Connect with like-minded people.
           </p>
 
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto mb-8">
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
               <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
               <p className="text-xs text-gray-400">Public Groups</p>
@@ -45,6 +46,14 @@ export default function GroupsPage() {
               <p className="text-xs text-gray-400">Discussions</p>
             </div>
           </div>
+          
+          <Link
+            href="/home"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>
