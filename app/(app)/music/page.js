@@ -1,227 +1,37 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Music, Search, Heart, Clock, Disc, TrendingUp, Sparkles, Coins } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Music, Search, Heart, Clock, TrendingUp, Sparkles, Coins } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
-import { TRACKS, PLAYLISTS, GENRES, getTracksByGenre, getTrackById, formatDuration } from '@/lib/music/data'
-import { getPlayerState, savePlayerState, toggleLikeTrack, isTrackLiked, getLikedTracks, addToRecentTracks, getRecentTracks } from '@/lib/music/player'
-import { 
-  getRewardsState, 
-  startListeningSession, 
-  updateListeningSession, 
-  endListeningSession,
-  formatTokens,
-  getDailyProgress
-} from '@/lib/music/rewards'
+import { TRACKS, PLAYLISTS, GENRES, getTracksByGenre, getTrackById } from '@/lib/music/data'
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext'
+import { formatTokens } from '@/lib/music/rewards'
 import TrackCard from '@/components/music/TrackCard'
 import PlaylistCard from '@/components/music/PlaylistCard'
-import MiniPlayer from '@/components/music/MiniPlayer'
 import RewardsModal from '@/components/music/RewardsModal'
 
 export default function MusicPage() {
   const { toast } = useToast()
-  const [mounted, setMounted] = useState(false)
+  const {
+    mounted,
+    currentTrack,
+    isPlaying,
+    likedTracks,
+    recentTracks,
+    rewardsState,
+    selectedGenre,
+    debugInfo,
+    playTrack,
+    togglePlayPause,
+    likeTrack,
+    playPlaylist,
+    setSelectedGenre,
+    refreshLiked,
+  } = useMusicPlayer()
+  
   const [activeTab, setActiveTab] = useState('discover')
-  const [selectedGenre, setSelectedGenre] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [likedTracks, setLikedTracks] = useState([])
-  const [recentTracks, setRecentTracks] = useState([])
-  
-  // Player state
-  const [currentTrack, setCurrentTrack] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [volume, setVolume] = useState(0.8)
-  const [shuffle, setShuffle] = useState(false)
-  const [repeat, setRepeat] = useState('off')
-  const [queue, setQueue] = useState([])
-  
-  // Rewards state
-  const [rewardsState, setRewardsState] = useState(null)
-  const [isTabActive, setIsTabActive] = useState(true)
   const [showRewardsModal, setShowRewardsModal] = useState(false)
-  const lastToastRef = useRef(0)
-  
-  useEffect(() => {
-    setMounted(true)
-    const state = getPlayerState()
-    if (state) {
-      setVolume(state.volume || 0.8)
-      setShuffle(state.shuffle || false)
-      setRepeat(state.repeat || 'off')
-      if (state.currentTrackId) {
-        setCurrentTrack(getTrackById(state.currentTrackId))
-      }
-    }
-    setLikedTracks(getLikedTracks())
-    setRecentTracks(getRecentTracks())
-    setRewardsState(getRewardsState())
-    
-    // Tab visibility tracking for anti-abuse
-    const handleVisibilityChange = () => {
-      setIsTabActive(!document.hidden)
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
-  
-  // Save player state on changes
-  useEffect(() => {
-    if (!mounted) return
-    savePlayerState({
-      currentTrackId: currentTrack?.id || null,
-      volume,
-      shuffle,
-      repeat,
-    })
-  }, [mounted, currentTrack, volume, shuffle, repeat])
-  
-  const handlePlayTrack = useCallback((track) => {
-    // End previous session if different track
-    if (currentTrack && currentTrack.id !== track.id) {
-      endListeningSession()
-    }
-    
-    setCurrentTrack(track)
-    setIsPlaying(true)
-    setProgress(0)
-    addToRecentTracks(track.id)
-    setRecentTracks(getRecentTracks())
-    
-    // Start new listening session for rewards
-    startListeningSession(track.id, track.duration)
-    
-    // Set queue to filtered tracks
-    const tracks = getTracksByGenre(selectedGenre)
-    const trackIndex = tracks.findIndex(t => t.id === track.id)
-    if (trackIndex > -1) {
-      setQueue(tracks.slice(trackIndex + 1))
-    }
-  }, [selectedGenre, currentTrack])
-  
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying)
-  }
-  
-  const handleNext = useCallback(() => {
-    // End current session
-    endListeningSession()
-    
-    if (repeat === 'one') {
-      setProgress(0)
-      if (currentTrack) {
-        startListeningSession(currentTrack.id, currentTrack.duration)
-      }
-      return
-    }
-    
-    if (queue.length > 0) {
-      const nextTrack = shuffle 
-        ? queue[Math.floor(Math.random() * queue.length)]
-        : queue[0]
-      setCurrentTrack(nextTrack)
-      setQueue(prev => prev.filter(t => t.id !== nextTrack.id))
-      setProgress(0)
-      addToRecentTracks(nextTrack.id)
-      startListeningSession(nextTrack.id, nextTrack.duration)
-    } else if (repeat === 'all') {
-      const tracks = getTracksByGenre(selectedGenre)
-      if (tracks.length > 0) {
-        handlePlayTrack(tracks[0])
-      }
-    } else {
-      setIsPlaying(false)
-    }
-  }, [queue, shuffle, repeat, selectedGenre, handlePlayTrack, currentTrack])
-  
-  // Simulate playback progress and track rewards
-  useEffect(() => {
-    if (!isPlaying || !currentTrack) return
-    
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + (100 / currentTrack.duration)
-        
-        if (newProgress >= 100) {
-          handleNext()
-          return 0
-        }
-        
-        // Update rewards with anti-abuse checks
-        const result = updateListeningSession(isPlaying, volume, isTabActive, newProgress)
-        
-        if (result.tokensEarned > 0) {
-          setRewardsState(getRewardsState())
-          
-          // Show toast for song completion bonus (but not too frequently)
-          const now = Date.now()
-          if (result.events?.some(e => e.type === 'song_complete') && now - lastToastRef.current > 3000) {
-            toast({ type: 'success', message: `+${result.tokensEarned} tokens earned! 🎵` })
-            lastToastRef.current = now
-          }
-        }
-        
-        return newProgress
-      })
-    }, 1000)
-    
-    return () => clearInterval(interval)
-  }, [isPlaying, currentTrack, volume, isTabActive, handleNext, toast])
-  
-  const handlePrevious = () => {
-    if (progress > 10) {
-      setProgress(0)
-    } else {
-      // Go to previous track in current view
-      const tracks = getTracksByGenre(selectedGenre)
-      const currentIndex = tracks.findIndex(t => t.id === currentTrack?.id)
-      if (currentIndex > 0) {
-        handlePlayTrack(tracks[currentIndex - 1])
-      }
-    }
-  }
-  
-  const handleLikeTrack = (track) => {
-    const isNowLiked = toggleLikeTrack(track.id)
-    setLikedTracks(getLikedTracks())
-    toast({ 
-      type: isNowLiked ? 'success' : 'info', 
-      message: isNowLiked ? `Added "${track.title}" to favorites` : `Removed from favorites`
-    })
-  }
-  
-  const handlePlayPlaylist = (playlist) => {
-    const tracks = playlist.trackIds.map(id => getTrackById(id)).filter(Boolean)
-    if (tracks.length > 0) {
-      handlePlayTrack(tracks[0])
-      setQueue(tracks.slice(1))
-      toast({ type: 'success', message: `Playing "${playlist.title}"` })
-    }
-  }
-  
-  const handleSeek = (value) => {
-    setProgress(value)
-  }
-  
-  const handleVolumeChange = (value) => {
-    setVolume(value)
-  }
-  
-  const handleToggleShuffle = () => {
-    setShuffle(!shuffle)
-    toast({ type: 'info', message: shuffle ? 'Shuffle off' : 'Shuffle on' })
-  }
-  
-  const handleToggleRepeat = () => {
-    const modes = ['off', 'all', 'one']
-    const currentIndex = modes.indexOf(repeat)
-    const nextMode = modes[(currentIndex + 1) % modes.length]
-    setRepeat(nextMode)
-    toast({ type: 'info', message: `Repeat: ${nextMode === 'off' ? 'Off' : nextMode === 'all' ? 'All' : 'One'}` })
-  }
   
   // Filter tracks
   const filteredTracks = getTracksByGenre(selectedGenre).filter(track => {
@@ -238,6 +48,24 @@ export default function MusicPage() {
   // Get recent track objects
   const recentTrackObjects = recentTracks.map(id => getTrackById(id)).filter(Boolean).slice(0, 10)
   
+  const handleLikeTrack = (track) => {
+    const isNowLiked = likeTrack(track)
+    toast({ 
+      type: isNowLiked ? 'success' : 'info', 
+      message: isNowLiked ? `Added "${track.title}" to favorites` : `Removed from favorites`
+    })
+  }
+  
+  const handlePlayPlaylist = (playlist) => {
+    playPlaylist(playlist)
+    toast({ type: 'success', message: `Playing "${playlist.title}"` })
+  }
+  
+  const handlePlayTrack = (track) => {
+    const tracks = getTracksByGenre(selectedGenre)
+    playTrack(track, tracks)
+  }
+  
   if (!mounted) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -248,7 +76,7 @@ export default function MusicPage() {
   }
   
   return (
-    <div className="space-y-6 pb-24 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -358,7 +186,7 @@ export default function MusicPage() {
                   isCurrentTrack={currentTrack?.id === track.id}
                   isLiked={likedTracks.includes(track.id)}
                   onPlay={handlePlayTrack}
-                  onPause={() => setIsPlaying(false)}
+                  onPause={togglePlayPause}
                   onLike={handleLikeTrack}
                 />
               ))}
@@ -381,7 +209,7 @@ export default function MusicPage() {
                     isCurrentTrack={currentTrack?.id === track.id}
                     isLiked={likedTracks.includes(track.id)}
                     onPlay={handlePlayTrack}
-                    onPause={() => setIsPlaying(false)}
+                    onPause={togglePlayPause}
                     onLike={handleLikeTrack}
                     compact
                   />
@@ -413,7 +241,7 @@ export default function MusicPage() {
                   isCurrentTrack={currentTrack?.id === track.id}
                   isLiked={true}
                   onPlay={handlePlayTrack}
-                  onPause={() => setIsPlaying(false)}
+                  onPause={togglePlayPause}
                   onLike={handleLikeTrack}
                 />
               ))}
@@ -441,7 +269,7 @@ export default function MusicPage() {
                   isCurrentTrack={currentTrack?.id === track.id}
                   isLiked={likedTracks.includes(track.id)}
                   onPlay={handlePlayTrack}
-                  onPause={() => setIsPlaying(false)}
+                  onPause={togglePlayPause}
                   onLike={handleLikeTrack}
                   compact
                 />
@@ -451,34 +279,11 @@ export default function MusicPage() {
         </section>
       )}
       
-      {/* Mini Player - Fixed at bottom */}
-      {currentTrack && (
-        <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40">
-          <MiniPlayer
-            track={currentTrack}
-            isPlaying={isPlaying}
-            progress={progress}
-            volume={volume}
-            isLiked={likedTracks.includes(currentTrack.id)}
-            shuffle={shuffle}
-            repeat={repeat}
-            rewardsState={rewardsState}
-            onPlayPause={handlePlayPause}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onSeek={handleSeek}
-            onVolumeChange={handleVolumeChange}
-            onLike={() => handleLikeTrack(currentTrack)}
-            onShuffle={handleToggleShuffle}
-            onRepeat={handleToggleRepeat}
-          />
-        </div>
-      )}
-      
       {/* Rewards Modal */}
       <RewardsModal 
         isOpen={showRewardsModal} 
-        onClose={() => setShowRewardsModal(false)} 
+        onClose={() => setShowRewardsModal(false)}
+        debugInfo={debugInfo}
       />
     </div>
   )
