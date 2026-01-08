@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Music, Search, Heart, Clock, TrendingUp, Sparkles, Coins } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Music, Search, Heart, Clock, TrendingUp, Sparkles, Coins, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
-import { TRACKS, PLAYLISTS, GENRES, getTracksByGenre, getTrackById } from '@/lib/music/data'
+import { TRACKS, PLAYLISTS, GENRES, GENRE_CATEGORIES, getTracksByGenre, getTrackById, getGenreCounts } from '@/lib/music/data'
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext'
 import { formatTokens } from '@/lib/music/rewards'
 import TrackCard from '@/components/music/TrackCard'
@@ -32,6 +32,9 @@ export default function MusicPage() {
   const [activeTab, setActiveTab] = useState('discover')
   const [searchQuery, setSearchQuery] = useState('')
   const [showRewardsModal, setShowRewardsModal] = useState(false)
+  
+  // Memoize genre counts for performance
+  const genreCounts = useMemo(() => getGenreCounts(), [])
   
   // Filter tracks
   const filteredTracks = getTracksByGenre(selectedGenre).filter(track => {
