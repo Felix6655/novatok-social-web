@@ -202,6 +202,26 @@ export default function ThinkPage() {
           </div>
         </div>
 
+        {/* Music Attachment */}
+        <div className="px-5 pb-4">
+          {attachedTrack ? (
+            <MusicAttachmentPreview 
+              track={attachedTrack} 
+              onRemove={() => setAttachedTrack(null)}
+              onPlay={handlePlayAttachedTrack}
+            />
+          ) : (
+            <button
+              onClick={() => setShowTrackPicker(true)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-700 hover:border-purple-500/50 hover:bg-purple-500/5 text-gray-500 hover:text-purple-400 transition-all text-sm"
+            >
+              <Music className="w-4 h-4" />
+              <span>Attach a track</span>
+            </button>
+          )}
+        </div>
+
         {/* Release Button */}
         <div className="p-5 pt-2 border-t border-gray-800/50">
           <button
