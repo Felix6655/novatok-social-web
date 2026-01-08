@@ -55,6 +55,17 @@ export default function MusicPage() {
     }
     setLikedTracks(getLikedTracks())
     setRecentTracks(getRecentTracks())
+    setRewardsState(getRewardsState())
+    
+    // Tab visibility tracking for anti-abuse
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden)
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
   
   // Simulate playback progress
