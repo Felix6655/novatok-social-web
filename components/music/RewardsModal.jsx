@@ -83,7 +83,7 @@ export default function RewardsModal({ isOpen, onClose }) {
           {dailyProgress && (
             <div className="bg-gray-800/30 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-400">Today's Progress</span>
+                <span className="text-xs text-gray-400">Today&apos;s Progress</span>
                 <span className="text-xs text-gray-500">
                   {dailyProgress.earned} / {dailyProgress.cap} tokens
                 </span>
