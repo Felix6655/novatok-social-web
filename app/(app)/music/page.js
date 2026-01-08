@@ -304,10 +304,19 @@ export default function MusicPage() {
         <section>
           <h2 className="text-sm font-semibold text-gray-300 mb-3">Recently Played</h2>
           {recentTrackObjects.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 bg-gray-800/20 rounded-2xl border border-gray-800/50">
               <Clock className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-              <p className="text-gray-500">No recent tracks</p>
-              <p className="text-gray-600 text-sm">Start listening to build your history</p>
+              <p className="text-gray-500 font-medium">No recent tracks</p>
+              <p className="text-gray-600 text-sm mb-4">Start listening to build your history</p>
+              <button
+                onClick={() => {
+                  setActiveTab('discover')
+                  setSelectedGenre('all')
+                }}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
+              >
+                Browse All Tracks
+              </button>
             </div>
           ) : (
             <div className="space-y-1">
