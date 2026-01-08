@@ -68,22 +68,39 @@ export default function MusicPage() {
     }
   }, [])
   
-  // Simulate playback progress
+  // Simulate playback progress and track rewards
   useEffect(() => {
     if (!isPlaying || !currentTrack) return
     
     const interval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) {
+        const newProgress = prev + (100 / currentTrack.duration)
+        
+        if (newProgress >= 100) {
           handleNext()
           return 0
         }
-        return prev + (100 / currentTrack.duration)
+        
+        // Update rewards with anti-abuse checks
+        const result = updateListeningSession(isPlaying, volume, isTabActive, newProgress)
+        
+        if (result.tokensEarned > 0) {
+          setRewardsState(getRewardsState())
+          
+          // Show toast for song completion bonus (but not too frequently)
+          const now = Date.now()
+          if (result.events?.some(e => e.type === 'song_complete') && now - lastToastRef.current > 3000) {
+            toast({ type: 'success', message: `+${result.tokensEarned} tokens earned! 🎵` })
+            lastToastRef.current = now
+          }
+        }
+        
+        return newProgress
       })
     }, 1000)
     
     return () => clearInterval(interval)
-  }, [isPlaying, currentTrack])
+  }, [isPlaying, currentTrack, volume, isTabActive])
   
   // Save player state on changes
   useEffect(() => {
