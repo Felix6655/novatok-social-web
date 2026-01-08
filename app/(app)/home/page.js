@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
   Home, Lightbulb, Sparkles, Star, Brain, Clock,
   Bookmark, ChevronRight, CheckCircle, XCircle
@@ -9,6 +10,9 @@ import {
 import { getFeedItems, formatFeedDate, FEED_TYPES } from '@/lib/feed/aggregate'
 import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
 import { useToast } from '@/components/ui/ToastProvider'
+import ContinueListeningWidget from '@/components/music/ContinueListeningWidget'
+import { addToRecentTracks, getRecentTracks } from '@/lib/music/player'
+import { getTrackById } from '@/lib/music/data'
 
 // Type configurations
 const TYPE_CONFIG = {
