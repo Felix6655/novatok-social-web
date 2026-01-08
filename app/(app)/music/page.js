@@ -205,9 +205,19 @@ export default function MusicPage() {
           
           {/* Tracks Grid */}
           <section>
-            <h2 className="text-sm font-semibold text-gray-300 mb-3">
-              {selectedGenre === 'all' ? 'All Tracks' : GENRES.find(g => g.id === selectedGenre)?.label}
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-300">
+                {selectedGenre === 'all' ? 'All Tracks' : (
+                  <span className="flex items-center gap-2">
+                    <span>{GENRES.find(g => g.id === selectedGenre)?.icon}</span>
+                    {GENRES.find(g => g.id === selectedGenre)?.label}
+                  </span>
+                )}
+              </h2>
+              <span className="text-xs text-gray-600">
+                {filteredTracks.length} track{filteredTracks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredTracks.map(track => (
                 <TrackCard
