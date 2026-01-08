@@ -267,10 +267,19 @@ export default function MusicPage() {
             Your Favorites ({likedTrackObjects.length})
           </h2>
           {likedTrackObjects.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 bg-gray-800/20 rounded-2xl border border-gray-800/50">
               <Heart className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-              <p className="text-gray-500">No liked tracks yet</p>
-              <p className="text-gray-600 text-sm">Tap the heart icon to save your favorites</p>
+              <p className="text-gray-500 font-medium">No liked tracks yet</p>
+              <p className="text-gray-600 text-sm mb-4">Tap the heart icon to save your favorites</p>
+              <button
+                onClick={() => {
+                  setActiveTab('discover')
+                  setSelectedGenre('all')
+                }}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
+              >
+                Browse All Tracks
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
