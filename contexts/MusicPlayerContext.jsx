@@ -115,19 +115,23 @@ export function MusicPlayerProvider({ children }) {
     
     if (!isPlaying || !currentTrack || !mounted) return
     
-    console.log('[MusicPlayer] Starting playback interval')
+    console.log('[MusicPlayer] Starting playback interval for:', currentTrack.title)
     
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
-        const newProgress = prev + (100 / currentTrack.duration)
+        const track = currentTrackRef.current
+        if (!track) return prev
         
-        // Update rewards - get fresh values from state
-        const currentVolume = volume
+        const newProgress = prev + (100 / track.duration)
+        
+        // Get fresh values via refs and DOM
+        const currentVolume = volumeRef.current
         const tabVisible = document.visibilityState === 'visible'
         
+        // Call reward update
         const result = updateListeningSession(true, currentVolume, tabVisible, newProgress)
         
-        // Update debug info
+        // Update debug info every tick
         setDebugInfo({
           isPlaying: true,
           volume: currentVolume,
@@ -138,18 +142,21 @@ export function MusicPlayerProvider({ children }) {
           session: result.session,
           accumulatedSeconds: result.session?.accumulatedSeconds || 0,
           lastMinuteRewarded: result.session?.lastMinuteRewarded || 0,
+          trackListenedSeconds: result.session?.trackListenedSeconds || 0,
           tokensEarned: result.tokensEarned,
           reason: result.reason,
           totalTokens: result.totalTokens || result.state?.totalTokens || 0,
         })
         
+        // Update rewards state if tokens were earned
         if (result.tokensEarned > 0) {
-          console.log('[MusicPlayer] Tokens earned:', result.tokensEarned)
+          console.log('[MusicPlayer] Tokens earned:', result.tokensEarned, result.events)
           setRewardsState(getRewardsState())
         }
         
         // Handle track completion
         if (newProgress >= 100) {
+          console.log('[MusicPlayer] Track completed, playing next')
           handleNextInternal()
           return 0
         }
@@ -164,7 +171,7 @@ export function MusicPlayerProvider({ children }) {
         progressIntervalRef.current = null
       }
     }
-  }, [isPlaying, currentTrack, mounted, volume])
+  }, [isPlaying, currentTrack, mounted])
 
   // Internal next handler (to avoid dependency issues)
   const handleNextInternal = useCallback(() => {
