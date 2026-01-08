@@ -157,23 +157,51 @@ export default function MusicPage() {
             </div>
           </section>
           
-          {/* Genre Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {GENRES.map(genre => (
-              <button
-                key={genre.id}
-                onClick={() => setSelectedGenre(genre.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                  selectedGenre === genre.id
-                    ? 'bg-white text-black'
-                    : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                }`}
-              >
-                <span>{genre.icon}</span>
-                {genre.label}
-              </button>
-            ))}
-          </div>
+          {/* Genre Filter - Horizontal Scrolling */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Browse by Genre</h2>
+              <span className="text-[10px] text-gray-600">{GENRES.length - 1} genres</span>
+            </div>
+            <div className="relative">
+              {/* Gradient fade indicators */}
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[hsl(0,0%,4%)] to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[hsl(0,0%,4%)] to-transparent z-10 pointer-events-none" />
+              
+              {/* Scrollable genre container */}
+              <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide scroll-smooth">
+                {GENRES.map(genre => {
+                  const count = genreCounts[genre.id] || 0
+                  const isSelected = selectedGenre === genre.id
+                  const isAll = genre.id === 'all'
+                  
+                  return (
+                    <button
+                      key={genre.id}
+                      onClick={() => setSelectedGenre(genre.id)}
+                      className={`
+                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium 
+                        transition-all whitespace-nowrap flex-shrink-0
+                        ${isSelected
+                          ? 'bg-white text-black shadow-lg shadow-white/10'
+                          : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700/60 hover:text-white'
+                        }
+                        ${isAll ? 'pr-4' : ''}
+                      `}
+                    >
+                      <span className="text-sm">{genre.icon}</span>
+                      <span>{genre.label}</span>
+                      {!isAll && count > 0 && (
+                        <span className={`text-[10px] ml-0.5 ${isSelected ? 'text-gray-600' : 'text-gray-600'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
           
           {/* Tracks Grid */}
           <section>
