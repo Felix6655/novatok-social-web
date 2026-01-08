@@ -82,14 +82,18 @@ export default function ThinkPage() {
     try {
       const wasUnlocked = isQuietVoicesUnlocked()
       
-      // Save the thought
+      // Save the thought with music attachment
       const savedThought = await saveThought({
         text: text.trim(),
-        mood: selectedMood || 'neutral'
+        mood: selectedMood || 'neutral',
+        attachedTrackId: attachedTrack?.id || null
       })
       
       // Store last thought for save option
-      setLastThought(savedThought)
+      setLastThought({
+        ...savedThought,
+        attachedTrack: attachedTrack
+      })
       setIsLastSaved(false)
 
       // Check if this is the first thought (unlock Quiet Voices)
@@ -106,12 +110,19 @@ export default function ThinkPage() {
       toast({ type: 'success', message: 'Thought released ✓' })
       setText('')
       setSelectedMood(null)
+      setAttachedTrack(null)
       
     } catch (error) {
       toast({ type: 'error', message: error.message || 'Failed to save thought' })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Handle playing attached track
+  const handlePlayAttachedTrack = (track) => {
+    addToRecentTracks(track.id)
+    toast({ type: 'success', message: `Playing "${track.title}"` })
   }
 
   // Prevent hydration mismatch
