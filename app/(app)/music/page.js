@@ -1,13 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Music, Search, Heart, Clock, Disc, TrendingUp, Sparkles } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Music, Search, Heart, Clock, Disc, TrendingUp, Sparkles, Coins } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 import { TRACKS, PLAYLISTS, GENRES, getTracksByGenre, getTrackById, formatDuration } from '@/lib/music/data'
 import { getPlayerState, savePlayerState, toggleLikeTrack, isTrackLiked, getLikedTracks, addToRecentTracks, getRecentTracks } from '@/lib/music/player'
+import { 
+  getRewardsState, 
+  startListeningSession, 
+  updateListeningSession, 
+  endListeningSession,
+  formatTokens,
+  getDailyProgress
+} from '@/lib/music/rewards'
 import TrackCard from '@/components/music/TrackCard'
 import PlaylistCard from '@/components/music/PlaylistCard'
 import MiniPlayer from '@/components/music/MiniPlayer'
+import RewardsModal from '@/components/music/RewardsModal'
 
 export default function MusicPage() {
   const { toast } = useToast()
@@ -26,6 +35,12 @@ export default function MusicPage() {
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState('off')
   const [queue, setQueue] = useState([])
+  
+  // Rewards state
+  const [rewardsState, setRewardsState] = useState(null)
+  const [isTabActive, setIsTabActive] = useState(true)
+  const [showRewardsModal, setShowRewardsModal] = useState(false)
+  const lastToastRef = useRef(0)
   
   useEffect(() => {
     setMounted(true)
