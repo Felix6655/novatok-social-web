@@ -1,17 +1,23 @@
 'use client'
 
 import { Play, Users } from 'lucide-react'
+import { getGradientCSS, getTrackArtworkSVG } from '@/lib/music/artwork'
 
 export default function PlaylistCard({ playlist, onPlay }) {
   if (!playlist) return null
+  
+  const gradientCSS = getGradientCSS(playlist.id, 'playlist')
   
   return (
     <div 
       className="group relative bg-gray-800/30 hover:bg-gray-800/50 rounded-xl p-3 transition-all duration-200 cursor-pointer"
       onClick={() => onPlay?.(playlist)}
     >
-      {/* Cover Art */}
-      <div className={`aspect-square rounded-lg bg-gradient-to-br ${playlist.coverGradient} mb-3 relative overflow-hidden`}>
+      {/* Cover Art - Using procedural gradient */}
+      <div 
+        className="aspect-square rounded-lg mb-3 relative overflow-hidden"
+        style={{ background: gradientCSS }}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-white/20 text-5xl">♫</span>
         </div>
