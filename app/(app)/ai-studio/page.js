@@ -435,12 +435,12 @@ export default function AIStudioPage() {
         {/* Negative Prompt (collapsible) */}
         <details className="group">
           <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors">
-            Advanced: Negative prompt (optional)
+            {t('aiStudio.negativePromptLabel')}
           </summary>
           <textarea
             value={negativePrompt}
             onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="blurry, low quality, distorted, ugly..."
+            placeholder={t('aiStudio.negativePromptPlaceholder')}
             className="w-full h-16 mt-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none text-sm"
             maxLength={500}
             disabled={isGenerating}
@@ -449,7 +449,7 @@ export default function AIStudioPage() {
 
         {/* Style Selector */}
         <div>
-          <label className="text-xs text-gray-500 block mb-2">Style</label>
+          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.styleLabel')}</label>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {STYLE_PRESETS.map((style) => (
               <button
@@ -462,7 +462,7 @@ export default function AIStudioPage() {
                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                 } disabled:opacity-50`}
               >
-                <span className="block text-xs font-medium truncate">{style.name}</span>
+                <span className="block text-xs font-medium truncate">{t(`aiStudio.styles.${style.id}`)}</span>
               </button>
             ))}
           </div>
@@ -470,7 +470,7 @@ export default function AIStudioPage() {
 
         {/* Size Selector */}
         <div>
-          <label className="text-xs text-gray-500 block mb-2">Size</label>
+          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.sizeLabel')}</label>
           <div className="flex gap-2 flex-wrap">
             {SIZE_PRESETS.map((size) => (
               <button
@@ -483,7 +483,7 @@ export default function AIStudioPage() {
                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                 } disabled:opacity-50`}
               >
-                <span className="text-xs font-medium">{size.name}</span>
+                <span className="text-xs font-medium">{t(`aiStudio.sizes.${size.id}`)}</span>
                 <span className="text-[10px] text-gray-500 ml-1">({size.ratio})</span>
               </button>
             ))}
