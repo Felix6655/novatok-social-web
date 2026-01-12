@@ -1,11 +1,13 @@
 /**
  * AI Studio Service Layer
  * 
- * Handles all API communication for AI generation features
- * Uses the central API client patterns
+ * Handles all API communication and cross-platform operations
+ * for AI generation features.
  */
 
 import { ApiError, ErrorCodes } from './api'
+import { shareFile, downloadFile, copyToClipboard } from './share'
+import { setPendingPost } from './pendingPost'
 
 const AI_API_BASE = '/api/ai'
 
@@ -72,73 +74,57 @@ export async function generateImage(params) {
 }
 
 /**
- * Download an image from URL
+ * Download an image (cross-platform)
  * @param {string} imageUrl - URL of the image
  * @param {string} [filename] - Optional filename
+ * @returns {Promise<{success: boolean}>}
  */
 export async function downloadImage(imageUrl, filename = 'ai-generated') {
-  try {
-    const response = await fetch(imageUrl)
-    const blob = await response.blob()
-    
-    // Determine extension from content type
-    const contentType = response.headers.get('content-type') || 'image/webp'
-    const ext = contentType.split('/')[1] || 'webp'
-    
-    // Create download link
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${filename}.${ext}`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    
-    return true
-  } catch (error) {
-    console.error('[AI Studio] Download failed:', error)
-    throw new ApiError('Failed to download image', 0, ErrorCodes.NETWORK_ERROR)
-  }
+  return downloadFile(imageUrl, filename)
 }
 
 /**
- * Share image using Web Share API (if available)
+ * Share image (cross-platform)
+ * Uses native share on mobile, Web Share API or clipboard on web
  * @param {string} imageUrl - URL of the image
- * @param {string} title - Share title
- * @returns {Promise<boolean>} - True if shared, false if not supported
+ * @param {string} [title] - Share title
+ * @returns {Promise<{success: boolean, method: string}>}
  */
 export async function shareImage(imageUrl, title = 'AI Generated Image') {
-  if (!navigator.share) {
-    return false
-  }
-  
-  try {
-    // Try to share as file first
-    const response = await fetch(imageUrl)
-    const blob = await response.blob()
-    const file = new File([blob], 'ai-image.webp', { type: blob.type })
-    
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title,
-        files: [file],
-      })
-    } else {
-      // Fallback to sharing URL
-      await navigator.share({
-        title,
-        url: imageUrl,
-      })
-    }
-    
-    return true
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      // User cancelled - not an error
-      return false
-    }
-    console.error('[AI Studio] Share failed:', error)
-    throw error
-  }
+  return shareFile({
+    url: imageUrl,
+    title,
+    mimeType: 'image/webp',
+  })
+}
+
+/**
+ * Copy image URL to clipboard
+ * @param {string} imageUrl - URL to copy
+ * @returns {Promise<{success: boolean, method: string}>}
+ */
+export async function copyImageUrl(imageUrl) {
+  return copyToClipboard(imageUrl)
+}
+
+/**
+ * Post to Reels (cross-platform)
+ * Stores the image in pendingPost store for Reels to pick up
+ * @param {Object} params
+ * @param {string} params.imageUrl - URL of the image
+ * @param {string} params.prompt - The prompt used to generate
+ * @param {string} [params.caption] - Optional pre-filled caption
+ * @returns {Promise<void>}
+ */
+export async function postToReels({ imageUrl, prompt, caption = '' }) {
+  await setPendingPost({
+    type: 'ai_image',
+    url: imageUrl,
+    prompt,
+    caption: caption || `AI Generated: ${prompt}`,
+    metadata: {
+      source: 'ai-studio',
+    },
+    timestamp: Date.now(),
+  })
 }
