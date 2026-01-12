@@ -178,6 +178,7 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
 
 // Main Sidebar Component
 function Sidebar({ pathname }) {
+  const { t } = useTranslation()
   const router = useRouter()
   const { toast } = useToast()
   const [expandedSections, setExpandedSections] = useState({
