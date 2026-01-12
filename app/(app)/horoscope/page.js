@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { Star, Sparkles, Heart, Briefcase, Smile, Loader2, Bookmark } from 'lucide-react'
+import { Star, Sparkles, Heart, Briefcase, Smile, Bookmark, History, ChevronRight } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
-import { generateReading, saveReading, SIGNS } from '@/lib/horoscope/storage'
+import { generateReading, saveReading, getHistory, SIGNS } from '@/lib/horoscope/storage'
 import { saveItem, isSaved } from '@/lib/saved/storage'
+
+// Shared UI components from new /src architecture
+import { Loading, Empty, ErrorDisplay } from '@/src/components/common'
+import { useLocalStorage } from '@/src/hooks'
 
 // Map sign IDs to poster images
 const ZODIAC_IMAGES = {
@@ -25,15 +29,24 @@ const ZODIAC_IMAGES = {
 
 export default function HoroscopePage() {
   const { toast } = useToast()
+  
+  // State
   const [mounted, setMounted] = useState(false)
-  const [selectedSign, setSelectedSign] = useState('aries')
+  const [selectedSign, setSelectedSign] = useLocalStorage('novatok_horoscope_sign', 'aries')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [reading, setReading] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [isReadingSaved, setIsReadingSaved] = useState(false)
+  const [history, setHistory] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
 
+  // Initialize on mount
   useEffect(() => {
     setMounted(true)
+    // Load history from localStorage
+    const savedHistory = getHistory()
+    setHistory(savedHistory)
   }, [])
 
   // Check if current reading is saved when it changes
@@ -43,48 +56,76 @@ export default function HoroscopePage() {
     }
   }, [reading])
 
-  const handleGenerate = async () => {
+  // Generate reading handler
+  const handleGenerate = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     
-    // Simulate loading
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const r = generateReading(selectedSign, selectedDate)
-    setReading(r)
-    await saveReading(r)
-    setIsLoading(false)
-    toast({ type: 'success', message: 'Your reading is ready!' })
-  }
+    try {
+      // Simulate API delay (will be replaced with real API in Phase 2)
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      const r = generateReading(selectedSign, selectedDate)
+      setReading(r)
+      await saveReading(r)
+      
+      // Update local history state
+      setHistory(getHistory())
+      
+      toast({ type: 'success', message: 'Your reading is ready!' })
+    } catch (err) {
+      setError({
+        message: err.message || 'Failed to generate reading',
+        code: 'GENERATION_ERROR'
+      })
+      toast({ type: 'error', message: 'Failed to generate reading' })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedSign, selectedDate, toast])
 
-  const handleSaveReading = () => {
+  // Save reading to saved items
+  const handleSaveReading = useCallback(() => {
     if (!reading) return
     
-    saveItem({
-      type: 'horoscope',
-      sourceId: reading.id,
-      title: `${reading.sign.name} ${reading.sign.symbol} Daily Reading`,
-      summary: reading.mood,
-      metadata: {
-        sign: reading.sign,
-        date: reading.date,
-        love: reading.love,
-        career: reading.career,
-        mood: reading.mood,
-        luckyNumber: reading.luckyNumber,
-        luckyColor: reading.luckyColor
-      },
-      createdAt: reading.generatedAt
-    })
-    
-    setIsReadingSaved(true)
-    toast({ type: 'success', message: 'Saved ✓' })
-  }
+    try {
+      saveItem({
+        type: 'horoscope',
+        sourceId: reading.id,
+        title: `${reading.sign.name} ${reading.sign.symbol} Daily Reading`,
+        summary: reading.mood,
+        metadata: {
+          sign: reading.sign,
+          date: reading.date,
+          love: reading.love,
+          career: reading.career,
+          mood: reading.mood,
+          luckyNumber: reading.luckyNumber,
+          luckyColor: reading.luckyColor
+        },
+        createdAt: reading.generatedAt
+      })
+      
+      setIsReadingSaved(true)
+      toast({ type: 'success', message: 'Saved ✓' })
+    } catch (err) {
+      toast({ type: 'error', message: 'Failed to save reading' })
+    }
+  }, [reading, toast])
 
+  // Load reading from history
+  const handleLoadFromHistory = useCallback((historyReading) => {
+    setReading(historyReading)
+    setSelectedSign(historyReading.sign.id)
+    setSelectedDate(historyReading.date)
+    setShowHistory(false)
+  }, [setSelectedSign])
+
+  // Loading skeleton during SSR
   if (!mounted) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-32 bg-gray-800/50 rounded-2xl" />
-        <div className="h-64 bg-gray-800/50 rounded-2xl" />
+      <div className="space-y-6">
+        <Loading variant="skeleton" count={3} />
       </div>
     )
   }
@@ -92,15 +133,73 @@ export default function HoroscopePage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30">
-          <Star className="w-5 h-5 text-amber-400" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30">
+            <Star className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-white">Horoscope</h1>
+            <p className="text-sm text-gray-500">Daily cosmic guidance</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-white">Horoscope</h1>
-          <p className="text-sm text-gray-500">Daily cosmic guidance</p>
-        </div>
+        
+        {/* History Toggle */}
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+            showHistory 
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+              : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          History
+        </button>
       </div>
+
+      {/* History Panel */}
+      {showHistory && (
+        <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
+          <h3 className="text-sm font-medium text-white mb-3">Recent Readings</h3>
+          
+          {history.length === 0 ? (
+            <Empty 
+              preset="history" 
+              size="sm"
+              description="Your reading history will appear here."
+            />
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {history.map((item, idx) => (
+                <button
+                  key={item.id || idx}
+                  onClick={() => handleLoadFromHistory(item)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 transition-colors text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{item.sign.symbol}</span>
+                    <div>
+                      <p className="text-sm font-medium text-white">{item.sign.name}</p>
+                      <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <ErrorDisplay 
+          error={error}
+          title="Reading Error"
+          onRetry={handleGenerate}
+        />
+      )}
 
       {/* Sign Selector */}
       <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
@@ -172,14 +271,26 @@ export default function HoroscopePage() {
           className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-amber-500 hover:to-orange-500 transition-all disabled:opacity-50"
         >
           {isLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Reading the stars...</>
+            <>
+              <Loading variant="spinner" size="sm" className="py-0" />
+              <span>Reading the stars...</span>
+            </>
           ) : (
             <><Sparkles className="w-5 h-5" /> Generate Reading</>
           )}
         </button>
       </div>
 
-      {/* Reading Card */}
+      {/* Reading Card - Empty State if no reading */}
+      {!reading && !isLoading && (
+        <Empty 
+          preset="horoscope"
+          action={handleGenerate}
+          actionLabel="Generate Reading"
+        />
+      )}
+
+      {/* Reading Card - With Content */}
       {reading && (
         <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 overflow-hidden">
           {/* Header */}
