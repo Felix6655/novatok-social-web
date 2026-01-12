@@ -2,52 +2,49 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import { 
-  Video, VideoOff, Mic, MicOff, RefreshCw, Radio, Camera, AlertCircle, 
-  Eye, Clock, X, Share2, Heart, MessageCircle, Users, Info
+  Video, VideoOff, Mic, MicOff, RefreshCw, Camera, AlertCircle, 
+  Square, Play, Check, X, Upload, RotateCcw, Clock
 } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
-import {
-  createLiveSession,
-  endLiveSession,
-  formatLiveDuration,
-  formatViewerCount
-} from '@/lib/live/storage'
+import { postVideoToReels, storeBlobUrl } from '@/src/services/userVideos'
 
-export default function LivePage() {
+const MAX_RECORDING_SECONDS = 15
+
+export default function GoLiveLitePage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useTranslation()
+  
+  // Refs
   const videoRef = useRef(null)
+  const previewRef = useRef(null)
   const streamRef = useRef(null)
-  const viewerIntervalRef = useRef(null)
-  const durationIntervalRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const chunksRef = useRef([])
+  const timerRef = useRef(null)
   
   // State
+  const [mounted, setMounted] = useState(false)
   const [permissionState, setPermissionState] = useState('idle') // idle, requesting, granted, denied
   const [isVideoEnabled, setIsVideoEnabled] = useState(true)
   const [isAudioEnabled, setIsAudioEnabled] = useState(true)
   const [videoDevices, setVideoDevices] = useState([])
   const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0)
   const [canSwitchCamera, setCanSwitchCamera] = useState(false)
-  const [mounted, setMounted] = useState(false)
   
-  // Live session state
-  const [liveSession, setLiveSession] = useState(null)
-  const [isLive, setIsLive] = useState(false)
-  const [viewerCount, setViewerCount] = useState(0)
-  const [liveDuration, setLiveDuration] = useState('0:00')
-  const [streamTitle, setStreamTitle] = useState('')
+  // Recording state
+  const [recordingState, setRecordingState] = useState('idle') // idle, recording, recorded
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [recordedBlobUrl, setRecordedBlobUrl] = useState(null)
+  const [caption, setCaption] = useState('')
+  const [isPosting, setIsPosting] = useState(false)
 
-  // Check if LiveKit is configured (for future upgrade path)
-  const [isLiveKitReady, setIsLiveKitReady] = useState(false)
-
-  // Stop all media tracks
+  // Cleanup function
   const stopAllTracks = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop()
-      })
+      streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
     if (videoRef.current) {
@@ -55,45 +52,26 @@ export default function LivePage() {
     }
   }, [])
 
-  // Cleanup intervals
-  const cleanupIntervals = useCallback(() => {
-    if (viewerIntervalRef.current) {
-      clearInterval(viewerIntervalRef.current)
-      viewerIntervalRef.current = null
-    }
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current)
-      durationIntervalRef.current = null
+  const cleanupTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
     }
   }, [])
 
   useEffect(() => {
     setMounted(true)
-    
-    // Check LiveKit config
-    async function checkLiveKit() {
-      try {
-        const res = await fetch('/api/livekit/token')
-        const data = await res.json()
-        setIsLiveKitReady(data.configured)
-      } catch {
-        setIsLiveKitReady(false)
-      }
-    }
-    checkLiveKit()
-    
-    // Cleanup on unmount
     return () => {
       stopAllTracks()
-      cleanupIntervals()
+      cleanupTimer()
     }
-  }, [stopAllTracks, cleanupIntervals])
+  }, [stopAllTracks, cleanupTimer])
 
-  // Get available video devices
+  // Get video devices
   const getVideoDevices = useCallback(async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
-      const cameras = devices.filter(device => device.kind === 'videoinput')
+      const cameras = devices.filter(d => d.kind === 'videoinput')
       setVideoDevices(cameras)
       setCanSwitchCamera(cameras.length > 1)
     } catch (e) {
@@ -101,191 +79,185 @@ export default function LivePage() {
     }
   }, [])
 
-  // Request camera and mic permissions
+  // Request permissions
   const requestPermissions = async () => {
     setPermissionState('requesting')
-    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
       })
-      
       streamRef.current = stream
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
-      
       setPermissionState('granted')
       await getVideoDevices()
-      toast({ type: 'success', message: 'Camera and microphone enabled!' })
-      
+      toast({ type: 'success', message: t('goLive.permissionsGranted') })
     } catch (error) {
       console.error('Permission error:', error)
       setPermissionState('denied')
-      
       if (error.name === 'NotAllowedError') {
-        toast({ type: 'error', message: 'Permission denied. Please allow camera and mic access.' })
+        toast({ type: 'error', message: t('goLive.permissionDenied') })
       } else if (error.name === 'NotFoundError') {
-        toast({ type: 'error', message: 'No camera or microphone found on this device.' })
+        toast({ type: 'error', message: t('goLive.noDeviceFound') })
       } else {
-        toast({ type: 'error', message: 'Failed to access camera and microphone.' })
+        toast({ type: 'error', message: t('goLive.permissionError') })
       }
     }
   }
 
-  // Toggle video track
+  // Toggle video
   const toggleVideo = useCallback(() => {
     if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0]
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled
-        setIsVideoEnabled(videoTrack.enabled)
-        toast({ type: 'info', message: videoTrack.enabled ? 'Camera on' : 'Camera off' })
+      const track = streamRef.current.getVideoTracks()[0]
+      if (track) {
+        track.enabled = !track.enabled
+        setIsVideoEnabled(track.enabled)
       }
     }
-  }, [toast])
+  }, [])
 
-  // Toggle audio track
+  // Toggle audio
   const toggleAudio = useCallback(() => {
     if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0]
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled
-        setIsAudioEnabled(audioTrack.enabled)
-        toast({ type: 'info', message: audioTrack.enabled ? 'Microphone on' : 'Microphone muted' })
+      const track = streamRef.current.getAudioTracks()[0]
+      if (track) {
+        track.enabled = !track.enabled
+        setIsAudioEnabled(track.enabled)
       }
     }
-  }, [toast])
+  }, [])
 
-  // Switch camera (front/back)
+  // Switch camera
   const switchCamera = useCallback(async () => {
     if (!canSwitchCamera || videoDevices.length < 2) return
-    
     const nextIndex = (currentDeviceIndex + 1) % videoDevices.length
     const nextDevice = videoDevices[nextIndex]
-    
     try {
-      // Stop current video track
       if (streamRef.current) {
-        const currentVideoTrack = streamRef.current.getVideoTracks()[0]
-        if (currentVideoTrack) {
-          currentVideoTrack.stop()
-        }
+        streamRef.current.getVideoTracks()[0]?.stop()
       }
-      
-      // Get new stream with selected device
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { deviceId: { exact: nextDevice.deviceId } },
         audio: true
       })
-      
-      // Replace video track
-      if (streamRef.current) {
-        const oldAudioTrack = streamRef.current.getAudioTracks()[0]
-        const newVideoTrack = newStream.getVideoTracks()[0]
-        const newAudioTrack = newStream.getAudioTracks()[0]
-        
-        // Maintain audio enabled state
-        if (newAudioTrack) {
-          newAudioTrack.enabled = isAudioEnabled
-        }
-        
-        // Stop old audio from new stream if we want to keep original
-        if (oldAudioTrack && newAudioTrack) {
-          newAudioTrack.stop()
-        }
-        
-        streamRef.current = new MediaStream([
-          newVideoTrack,
-          oldAudioTrack || newAudioTrack
-        ])
-      } else {
-        streamRef.current = newStream
-      }
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = streamRef.current
-      }
-      
+      const oldAudio = streamRef.current?.getAudioTracks()[0]
+      const newVideo = newStream.getVideoTracks()[0]
+      const newAudio = newStream.getAudioTracks()[0]
+      if (newAudio) newAudio.enabled = isAudioEnabled
+      if (oldAudio && newAudio) newAudio.stop()
+      streamRef.current = new MediaStream([newVideo, oldAudio || newAudio])
+      if (videoRef.current) videoRef.current.srcObject = streamRef.current
       setCurrentDeviceIndex(nextIndex)
       setIsVideoEnabled(true)
-      toast({ type: 'success', message: 'Camera switched' })
-      
+      toast({ type: 'success', message: t('goLive.cameraSwitched') })
     } catch (error) {
-      console.error('Failed to switch camera:', error)
-      toast({ type: 'error', message: 'Failed to switch camera' })
+      console.error('Switch camera error:', error)
+      toast({ type: 'error', message: t('goLive.switchCameraFailed') })
     }
-  }, [canSwitchCamera, videoDevices, currentDeviceIndex, isAudioEnabled, toast])
+  }, [canSwitchCamera, videoDevices, currentDeviceIndex, isAudioEnabled, toast, t])
 
-  // Start live stream
-  const handleStartLive = () => {
-    toast({ type: 'info', message: 'Live streaming coming soon' })
+  // Start recording
+  const startRecording = useCallback(() => {
+    if (!streamRef.current) return
     
-    // Create local session
-    const session = createLiveSession({
-      title: streamTitle || 'Live Stream',
-      hostName: 'You'
-    })
+    chunksRef.current = []
+    setRecordingTime(0)
+    setRecordedBlobUrl(null)
     
-    setLiveSession(session)
-    setIsLive(true)
-    setViewerCount(0)
-    
-    // Start fake viewer count increment (demo)
-    viewerIntervalRef.current = setInterval(() => {
-      setViewerCount(prev => {
-        // Random increment between 0-3, with occasional decrease
-        const change = Math.random() > 0.3 
-          ? Math.floor(Math.random() * 3) 
-          : -Math.floor(Math.random() * 2)
-        return Math.max(0, prev + change)
-      })
-    }, 3000)
-    
-    // Start duration timer
-    durationIntervalRef.current = setInterval(() => {
-      if (session) {
-        setLiveDuration(formatLiveDuration(session.startedAt))
+    try {
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'video/webm'
       }
-    }, 1000)
-  }
-
-  // End live stream
-  const handleEndLive = () => {
-    cleanupIntervals()
-    
-    if (liveSession) {
-      endLiveSession(liveSession.id)
+      
+      const recorder = new MediaRecorder(streamRef.current, options)
+      mediaRecorderRef.current = recorder
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+      
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+        const url = storeBlobUrl(blob)
+        setRecordedBlobUrl(url)
+        setRecordingState('recorded')
+        cleanupTimer()
+      }
+      
+      recorder.start(100) // Collect data every 100ms
+      setRecordingState('recording')
+      
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          const next = prev + 1
+          if (next >= MAX_RECORDING_SECONDS) {
+            stopRecording()
+          }
+          return next
+        })
+      }, 1000)
+      
+      toast({ type: 'info', message: t('goLive.recordingStarted') })
+    } catch (error) {
+      console.error('Start recording error:', error)
+      toast({ type: 'error', message: t('goLive.recordingFailed') })
     }
-    
-    setIsLive(false)
-    setLiveSession(null)
-    setViewerCount(0)
-    setLiveDuration('0:00')
-    
-    toast({ type: 'success', message: 'Live stream ended' })
-  }
+  }, [cleanupTimer, toast, t])
 
-  // Retry permissions
-  const retryPermissions = () => {
-    setPermissionState('idle')
-  }
-
-  // Share live link
-  const handleShare = () => {
-    if (liveSession) {
-      const url = `${window.location.origin}/live/${liveSession.id}`
-      navigator.clipboard.writeText(url)
-      toast({ type: 'success', message: 'Live link copied!' })
+  // Stop recording
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
     }
+    cleanupTimer()
+  }, [cleanupTimer])
+
+  // Record again
+  const recordAgain = useCallback(() => {
+    if (recordedBlobUrl) {
+      URL.revokeObjectURL(recordedBlobUrl)
+    }
+    setRecordedBlobUrl(null)
+    setRecordingState('idle')
+    setRecordingTime(0)
+    setCaption('')
+  }, [recordedBlobUrl])
+
+  // Post to Reels
+  const handlePostToReels = useCallback(async () => {
+    if (!recordedBlobUrl) return
+    
+    setIsPosting(true)
+    try {
+      await postVideoToReels({
+        blobUrl: recordedBlobUrl,
+        caption: caption.trim(),
+        duration: recordingTime,
+      })
+      toast({ type: 'success', message: t('goLive.postingToReels') })
+      router.push('/reels?upload=video')
+    } catch (error) {
+      console.error('Post to Reels error:', error)
+      toast({ type: 'error', message: t('goLive.postFailed') })
+      setIsPosting(false)
+    }
+  }, [recordedBlobUrl, caption, recordingTime, router, toast, t])
+
+  // Format time display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   if (!mounted) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-32 bg-gray-800/50 rounded-2xl" />
+        <div className="h-12 bg-gray-800/50 rounded-xl w-48" />
         <div className="aspect-video bg-gray-800/50 rounded-2xl" />
       </div>
     )
@@ -297,54 +269,36 @@ export default function LivePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-            isLive 
-              ? 'bg-red-500/20 border-red-500/30' 
+            recordingState === 'recording'
+              ? 'bg-red-500/20 border-red-500/30'
               : 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border-red-500/30'
           }`}>
-            <Video className={`w-5 h-5 ${isLive ? 'text-red-400' : 'text-red-400'}`} />
+            <Video className={`w-5 h-5 ${
+              recordingState === 'recording' ? 'text-red-400 animate-pulse' : 'text-red-400'
+            }`} />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Go Live</h1>
+            <h1 className="text-lg font-semibold text-white">{t('goLive.title')}</h1>
             <p className="text-sm text-gray-500">
-              {isLive ? 'You are live!' : 'Share your moment'}
+              {recordingState === 'recording' 
+                ? t('goLive.recording')
+                : recordingState === 'recorded'
+                ? t('goLive.recordingComplete')
+                : t('goLive.subtitle')}
             </p>
           </div>
         </div>
         
-        {/* Status badges */}
-        <div className="flex items-center gap-2">
-          {isLive && (
-            <>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs text-red-400 font-bold">LIVE</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800 border border-gray-700">
-                <Eye className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-white font-medium">{formatViewerCount(viewerCount)}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800 border border-gray-700">
-                <Clock className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-white font-mono">{liveDuration}</span>
-              </div>
-            </>
-          )}
-          {permissionState === 'granted' && !isLive && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-green-400 font-medium">Ready</span>
-            </div>
-          )}
-        </div>
+        {/* Recording indicator */}
+        {recordingState === 'recording' && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-sm font-mono text-red-400">
+              {formatTime(recordingTime)} / {formatTime(MAX_RECORDING_SECONDS)}
+            </span>
+          </div>
+        )}
       </div>
-
-      {/* LiveKit Ready Banner */}
-      {isLiveKitReady && !isLive && permissionState === 'granted' && (
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-          <Info className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm text-cyan-400">LiveKit ready for broadcast upgrade</span>
-        </div>
-      )}
 
       {/* Permission Request State */}
       {permissionState === 'idle' && (
@@ -353,15 +307,15 @@ export default function LivePage() {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center mx-auto mb-6 border border-red-500/30">
               <Camera className="w-10 h-10 text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Enable Camera & Microphone</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{t('goLive.enableCameraMic')}</h2>
             <p className="text-gray-400 max-w-sm mx-auto mb-6">
-              To go live, we need access to your camera and microphone. Your privacy matters — we only use them when you&apos;re broadcasting.
+              {t('goLive.enableCameraMicDesc')}
             </p>
             <button
               onClick={requestPermissions}
-              className="px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-semibold hover:from-red-500 hover:to-orange-500 transition-all hover:scale-105 active:scale-[0.98]"
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-semibold hover:from-red-500 hover:to-orange-500 transition-all"
             >
-              Enable Camera & Mic
+              {t('goLive.enableCameraMicBtn')}
             </button>
           </div>
         </div>
@@ -374,8 +328,8 @@ export default function LivePage() {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center mx-auto mb-6 border border-red-500/30 animate-pulse">
               <Camera className="w-10 h-10 text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Requesting Access...</h2>
-            <p className="text-gray-400">Please allow camera and microphone access in the browser prompt.</p>
+            <h2 className="text-xl font-bold text-white mb-2">{t('goLive.requestingAccess')}</h2>
+            <p className="text-gray-400">{t('goLive.requestingAccessDesc')}</p>
           </div>
         </div>
       )}
@@ -387,227 +341,254 @@ export default function LivePage() {
             <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6 border border-red-500/30">
               <AlertCircle className="w-10 h-10 text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Permission Denied</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{t('goLive.permissionDeniedTitle')}</h2>
             <p className="text-gray-400 max-w-md mx-auto mb-6">
-              Camera or microphone access was denied. To go live, please allow access in your browser settings:
+              {t('goLive.permissionDeniedDesc')}
             </p>
             <div className="bg-gray-900/50 rounded-xl p-4 max-w-sm mx-auto mb-6 text-left">
               <ol className="text-sm text-gray-400 space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 font-bold">1.</span>
-                  Click the camera/lock icon in your browser&apos;s address bar
+                  {t('goLive.permissionStep1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 font-bold">2.</span>
-                  Find Camera and Microphone permissions
+                  {t('goLive.permissionStep2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 font-bold">3.</span>
-                  Change both to &quot;Allow&quot;
+                  {t('goLive.permissionStep3')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 font-bold">4.</span>
-                  Refresh this page
+                  {t('goLive.permissionStep4')}
                 </li>
               </ol>
             </div>
             <button
-              onClick={retryPermissions}
+              onClick={() => setPermissionState('idle')}
               className="px-6 py-3 rounded-xl border border-red-500/30 text-red-400 font-medium hover:bg-red-500/10 transition-colors"
             >
-              Try Again
+              {t('goLive.tryAgain')}
             </button>
           </div>
         </div>
       )}
 
-      {/* Live Preview (Granted State) */}
+      {/* Camera Preview / Recording / Playback */}
       {permissionState === 'granted' && (
         <>
-          {/* Stream Title Input (only before live) */}
-          {!isLive && (
-            <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-4">
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Stream Title <span className="text-gray-600">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={streamTitle}
-                onChange={(e) => setStreamTitle(e.target.value)}
-                placeholder="What's your stream about?"
-                maxLength={100}
-                className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
-              />
-            </div>
-          )}
-
-          {/* Video Preview */}
+          {/* Video Container */}
           <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 overflow-hidden">
             <div className="relative aspect-video bg-black">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
-              />
+              {/* Live Preview (when not recorded) */}
+              {recordingState !== 'recorded' && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+                />
+              )}
+              
+              {/* Playback Preview (after recording) */}
+              {recordingState === 'recorded' && recordedBlobUrl && (
+                <video
+                  ref={previewRef}
+                  src={recordedBlobUrl}
+                  controls
+                  playsInline
+                  className="w-full h-full object-contain bg-black"
+                />
+              )}
               
               {/* Camera Off Overlay */}
-              {!isVideoEnabled && (
+              {!isVideoEnabled && recordingState !== 'recorded' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                   <div className="text-center">
                     <VideoOff className="w-16 h-16 text-gray-600 mx-auto mb-3" />
-                    <p className="text-gray-500">Camera is off</p>
+                    <p className="text-gray-500">{t('goLive.cameraOff')}</p>
                   </div>
                 </div>
               )}
               
-              {/* Live Badge & Info */}
-              <div className="absolute top-4 left-4 flex items-center gap-2">
-                {isLive ? (
-                  <div className="px-3 py-1.5 rounded-full bg-red-500 backdrop-blur-sm">
+              {/* Recording Timer Overlay */}
+              {recordingState === 'recording' && (
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-full bg-red-500">
                     <div className="flex items-center gap-1.5">
                       <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                      <span className="text-xs text-white font-bold">LIVE</span>
+                      <span className="text-xs text-white font-bold">REC</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/10">
-                    <span className="text-xs text-white font-medium">Preview</span>
-                  </div>
-                )}
-                
-                {isLive && streamTitle && (
                   <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-                    <span className="text-xs text-white">{streamTitle}</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Live Stats */}
-              {isLive && (
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                  <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5">
-                    <Eye className="w-3.5 h-3.5 text-white" />
-                    <span className="text-xs text-white font-medium">{formatViewerCount(viewerCount)}</span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-                    <span className="text-xs text-white font-mono">{liveDuration}</span>
+                    <span className="text-sm text-white font-mono">
+                      {formatTime(recordingTime)}
+                    </span>
                   </div>
                 </div>
               )}
               
-              {/* Audio Indicator */}
-              {!isAudioEnabled && (
-                <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full bg-red-500/80 backdrop-blur-sm">
-                  <div className="flex items-center gap-1.5">
-                    <MicOff className="w-3.5 h-3.5 text-white" />
-                    <span className="text-xs text-white font-medium">Muted</span>
-                  </div>
+              {/* Progress Bar */}
+              {recordingState === 'recording' && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-800">
+                  <div 
+                    className="h-full bg-red-500 transition-all duration-1000"
+                    style={{ width: `${(recordingTime / MAX_RECORDING_SECONDS) * 100}%` }}
+                  />
                 </div>
               )}
             </div>
 
             {/* Controls */}
             <div className="p-4 border-t border-gray-800">
-              <div className="flex items-center justify-center gap-3">
-                {/* Toggle Camera */}
-                <button
-                  onClick={toggleVideo}
-                  className={`p-4 rounded-xl transition-all ${
-                    isVideoEnabled
-                      ? 'bg-gray-800 text-white hover:bg-gray-700'
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  }`}
-                  title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-                >
-                  {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-                </button>
-
-                {/* Toggle Mic */}
-                <button
-                  onClick={toggleAudio}
-                  className={`p-4 rounded-xl transition-all ${
-                    isAudioEnabled
-                      ? 'bg-gray-800 text-white hover:bg-gray-700'
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  }`}
-                  title={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
-                >
-                  {isAudioEnabled ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
-                </button>
-
-                {/* Switch Camera (only show if multiple cameras) */}
-                {canSwitchCamera && (
+              {recordingState === 'idle' && (
+                <div className="flex items-center justify-center gap-3">
                   <button
-                    onClick={switchCamera}
-                    className="p-4 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-all"
-                    title="Switch camera"
+                    onClick={toggleVideo}
+                    className={`p-4 rounded-xl transition-all ${
+                      isVideoEnabled
+                        ? 'bg-gray-800 text-white hover:bg-gray-700'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                    title={isVideoEnabled ? t('goLive.turnOffCamera') : t('goLive.turnOnCamera')}
                   >
-                    <RefreshCw className="w-6 h-6" />
+                    {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
                   </button>
-                )}
-
-                {/* Share (only when live) */}
-                {isLive && (
+                  
                   <button
-                    onClick={handleShare}
-                    className="p-4 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-all"
-                    title="Share live link"
+                    onClick={toggleAudio}
+                    className={`p-4 rounded-xl transition-all ${
+                      isAudioEnabled
+                        ? 'bg-gray-800 text-white hover:bg-gray-700'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                    title={isAudioEnabled ? t('goLive.muteMic') : t('goLive.unmuteMic')}
                   >
-                    <Share2 className="w-6 h-6" />
+                    {isAudioEnabled ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
                   </button>
-                )}
-              </div>
+                  
+                  {canSwitchCamera && (
+                    <button
+                      onClick={switchCamera}
+                      className="p-4 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-all"
+                      title={t('goLive.switchCamera')}
+                    >
+                      <RefreshCw className="w-6 h-6" />
+                    </button>
+                  )}
+                </div>
+              )}
               
-              {/* Device info */}
-              {videoDevices.length > 0 && (
+              {recordingState === 'recording' && (
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={stopRecording}
+                    className="p-4 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all flex items-center gap-2"
+                  >
+                    <Square className="w-6 h-6 fill-current" />
+                    <span className="font-medium">{t('goLive.stopRecording')}</span>
+                  </button>
+                </div>
+              )}
+              
+              {recordingState === 'recorded' && (
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={recordAgain}
+                    className="px-4 py-3 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-all flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                    <span>{t('goLive.recordAgain')}</span>
+                  </button>
+                </div>
+              )}
+              
+              {videoDevices.length > 0 && recordingState === 'idle' && (
                 <p className="text-xs text-gray-600 text-center mt-3">
-                  Camera: {videoDevices[currentDeviceIndex]?.label || `Camera ${currentDeviceIndex + 1}`}
+                  {t('goLive.camera')}: {videoDevices[currentDeviceIndex]?.label || `Camera ${currentDeviceIndex + 1}`}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Start/End Live Button */}
-          {isLive ? (
+          {/* Start Recording Button */}
+          {recordingState === 'idle' && (
             <button
-              onClick={handleEndLive}
-              className="w-full py-4 rounded-xl bg-red-500 text-white font-bold text-lg flex items-center justify-center gap-3 hover:bg-red-600 transition-all"
+              onClick={startRecording}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-red-500 hover:to-orange-500 transition-all"
             >
-              <X className="w-6 h-6" />
-              End Live
-            </button>
-          ) : (
-            <button
-              onClick={handleStartLive}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-red-500 hover:to-orange-500 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-red-500/20"
-            >
-              <Radio className="w-6 h-6" />
-              Start Live
+              <div className="w-4 h-4 rounded-full bg-white" />
+              {t('goLive.startRecording')}
             </button>
           )}
 
-          {/* Tips (only before live) */}
-          {!isLive && (
+          {/* Caption & Post Section */}
+          {recordingState === 'recorded' && (
+            <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-400 mb-2 block">
+                  {t('goLive.captionLabel')}
+                </label>
+                <input
+                  type="text"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder={t('goLive.captionPlaceholder')}
+                  maxLength={200}
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
+                />
+                <p className="text-xs text-gray-600 text-right mt-1">{caption.length}/200</p>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-800/50">
+                <Clock className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-400">
+                  {t('goLive.duration')}: {formatTime(recordingTime)}
+                </span>
+              </div>
+              
+              <button
+                onClick={handlePostToReels}
+                disabled={isPosting}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold flex items-center justify-center gap-3 hover:from-pink-500 hover:to-purple-500 transition-all disabled:opacity-50"
+              >
+                {isPosting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t('goLive.posting')}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    {t('goLive.postToReels')}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Tips */}
+          {recordingState === 'idle' && (
             <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Tips for going live</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-3">{t('goLive.tips')}</h3>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li className="flex items-start gap-2">
                   <span className="text-green-400">✓</span>
-                  Find good lighting — face a window or light source
+                  {t('goLive.tip1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-green-400">✓</span>
-                  Check your background is appropriate
+                  {t('goLive.tip2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-green-400">✓</span>
-                  Use headphones to avoid echo
+                  {t('goLive.tip3')}
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-green-400">✓</span>
-                  Ensure stable internet connection
+                  <span className="text-amber-400">⏱</span>
+                  {t('goLive.maxDuration', { seconds: MAX_RECORDING_SECONDS })}
                 </li>
               </ul>
             </div>
