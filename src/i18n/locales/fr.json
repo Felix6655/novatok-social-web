@@ -200,6 +200,13 @@
     "tip1": "Assurez-vous d'avoir un bon éclairage",
     "tip2": "Tenez votre appareil stable",
     "tip3": "Parlez clairement si vous enregistrez avec l'audio",
-    "maxDuration": "Durée maximale : {{seconds}} secondes"
+    "maxDuration": "Durée maximale : {{seconds}} secondes",
+    "uploadingVideo": "Téléchargement de la vidéo...",
+    "uploading": "Téléchargement...",
+    "uploadFailed": "Échec du téléchargement. Veuillez réessayer.",
+    "noVideoToPost": "Pas de vidéo à publier",
+    "storageNotConfigured": "Stockage non configuré",
+    "storageNotConfiguredDesc": "Le téléchargement de vidéos nécessite la configuration de Supabase Storage.",
+    "storageRequiredToPost": "Le stockage doit être configuré pour publier des vidéos"
   }
 }

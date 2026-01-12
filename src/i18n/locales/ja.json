@@ -200,6 +200,13 @@
     "tip1": "良い照明を確保してください",
     "tip2": "デバイスを安定させてください",
     "tip3": "音声録画時ははっきりと話してください",
-    "maxDuration": "最大録画時間：{{seconds}}秒"
+    "maxDuration": "最大録画時間：{{seconds}}秒",
+    "uploadingVideo": "ビデオをアップロード中...",
+    "uploading": "アップロード中...",
+    "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
+    "noVideoToPost": "投稿するビデオがありません",
+    "storageNotConfigured": "ストレージが設定されていません",
+    "storageNotConfiguredDesc": "ビデオのアップロードにはSupabase Storageの設定が必要です。",
+    "storageRequiredToPost": "ビデオを投稿するにはストレージの設定が必要です"
   }
 }

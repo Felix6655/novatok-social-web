@@ -200,6 +200,13 @@
     "tip1": "确保光线充足",
     "tip2": "保持设备稳定",
     "tip3": "录制音频时请清晰说话",
-    "maxDuration": "最长录制时间：{{seconds}}秒"
+    "maxDuration": "最长录制时间：{{seconds}}秒",
+    "uploadingVideo": "正在上传视频...",
+    "uploading": "上传中...",
+    "uploadFailed": "上传失败。请重试。",
+    "noVideoToPost": "没有要发布的视频",
+    "storageNotConfigured": "存储未配置",
+    "storageNotConfiguredDesc": "视频上传需要配置Supabase Storage。",
+    "storageRequiredToPost": "必须配置存储才能发布视频"
   }
 }

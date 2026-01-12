@@ -200,6 +200,13 @@
     "tip1": "Achten Sie auf gute Beleuchtung",
     "tip2": "Halten Sie Ihr Gerät ruhig",
     "tip3": "Sprechen Sie deutlich bei Audioaufnahmen",
-    "maxDuration": "Maximale Aufnahme: {{seconds}} Sekunden"
+    "maxDuration": "Maximale Aufnahme: {{seconds}} Sekunden",
+    "uploadingVideo": "Video wird hochgeladen...",
+    "uploading": "Hochladen...",
+    "uploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen.",
+    "noVideoToPost": "Kein Video zum Posten",
+    "storageNotConfigured": "Speicher nicht konfiguriert",
+    "storageNotConfiguredDesc": "Video-Upload erfordert Supabase Storage-Konfiguration.",
+    "storageRequiredToPost": "Speicher muss konfiguriert sein, um Videos zu posten"
   }
 }

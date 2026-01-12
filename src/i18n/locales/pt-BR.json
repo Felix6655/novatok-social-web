@@ -200,6 +200,13 @@
     "tip1": "Certifique-se de ter boa iluminação",
     "tip2": "Mantenha seu dispositivo estável",
     "tip3": "Fale claramente se gravar com áudio",
-    "maxDuration": "Máximo de gravação: {{seconds}} segundos"
+    "maxDuration": "Máximo de gravação: {{seconds}} segundos",
+    "uploadingVideo": "Enviando vídeo...",
+    "uploading": "Enviando...",
+    "uploadFailed": "Falha no envio. Por favor, tente novamente.",
+    "noVideoToPost": "Nenhum vídeo para postar",
+    "storageNotConfigured": "Armazenamento não configurado",
+    "storageNotConfiguredDesc": "O envio de vídeos requer configuração do Supabase Storage.",
+    "storageRequiredToPost": "O armazenamento deve ser configurado para postar vídeos"
   }
 }
