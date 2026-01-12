@@ -274,8 +274,8 @@ export default function AIStudioPage() {
             <Wand2 className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">AI Studio</h1>
-            <p className="text-sm text-gray-500">Create with AI-powered generation</p>
+            <h1 className="text-lg font-semibold text-white">{t('aiStudio.title')}</h1>
+            <p className="text-sm text-gray-500">{t('aiStudio.subtitle')}</p>
           </div>
         </div>
         
@@ -289,7 +289,7 @@ export default function AIStudioPage() {
           }`}
         >
           <History className="w-4 h-4" />
-          History
+          {t('aiStudio.history')}
         </button>
       </div>
 
@@ -298,9 +298,9 @@ export default function AIStudioPage() {
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-amber-200 font-medium">AI Service Not Configured</p>
+            <p className="text-amber-200 font-medium">{t('aiStudio.notConfigured')}</p>
             <p className="text-amber-400/80 text-sm mt-1">
-              Set REPLICATE_API_TOKEN in your environment to enable AI generation.
+              {t('aiStudio.notConfiguredDesc')}
             </p>
           </div>
         </div>
@@ -309,15 +309,15 @@ export default function AIStudioPage() {
       {/* History Panel */}
       {showHistory && (
         <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
-          <h3 className="text-sm font-medium text-white mb-3">Generation History</h3>
+          <h3 className="text-sm font-medium text-white mb-3">{t('aiStudio.historyTitle')}</h3>
           
           {isLoadingHistory ? (
             <Loading variant="skeleton" count={2} />
           ) : history.length === 0 ? (
             <Empty 
               icon={ImageIcon}
-              title="No generations yet"
-              description="Your AI creations will appear here."
+              title={t('aiStudio.noGenerations')}
+              description={t('aiStudio.noGenerationsDesc')}
               size="sm"
             />
           ) : (
