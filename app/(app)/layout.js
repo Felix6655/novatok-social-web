@@ -38,6 +38,7 @@ const sidebarSections = [
     label: 'Create & AI',
     collapsible: true,
     items: [
+      { href: '/ai-studio', label: 'AI Studio', icon: Wand2 },
       { href: '/live', label: 'Go Live', icon: Video },
       { href: '/tarot', label: 'Tarot / AI Psychic', icon: Sparkles },
       { href: '/horoscope', label: 'Horoscope', icon: Star },
