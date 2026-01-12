@@ -2386,7 +2386,7 @@ export default function ReelsPage() {
           <div className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/40">
             <kbd className="px-1.5 py-0.5 rounded bg-white/10 mx-1">↑</kbd>
             <kbd className="px-1.5 py-0.5 rounded bg-white/10 mx-1">↓</kbd> navigate
-            {reels[currentIndex]?.isVideo && (
+            {(reels[currentIndex]?.isVideo || reels[currentIndex]?.isAiVideo) && (
               <>
                 <span className="mx-2">|</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-white/10 mx-1">Space</kbd> play/pause
