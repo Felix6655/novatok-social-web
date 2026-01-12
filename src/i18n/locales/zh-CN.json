@@ -107,6 +107,44 @@
     "close": "关闭",
     "technicalDetails": "技术详情"
   },
+  "aiChat": {
+    "title": "与AI聊天",
+    "subtitle": "AI驱动的对话",
+    "chattingWith": "正在与{{name}}聊天",
+    "selectPersona": "选择一个AI来聊天",
+    "selectPersonaDesc": "选择一个个性开始对话",
+    "notConfigured": "AI服务未配置",
+    "notConfiguredDesc": "请在环境变量中设置OPENAI_API_KEY以启用AI聊天。",
+    "newChat": "新聊天",
+    "clearChat": "清空聊天",
+    "clearChatConfirm": "清空这个对话？",
+    "messagePlaceholder": "输入消息...",
+    "send": "发送",
+    "typing": "正在输入...",
+    "emptyChat": "开始对话",
+    "emptyChatDesc": "在下方输入消息开始聊天",
+    "errorRetry": "重试",
+    "errorOccurred": "出错了",
+    "messageTooLong": "消息过长（最多2000字符）",
+    "messageEmpty": "请输入消息",
+    "personas": {
+      "creative": {
+        "name": "缪斯",
+        "desc": "创意伙伴",
+        "fullDesc": "帮助艺术、写作、头脑风暴"
+      },
+      "coach": {
+        "name": "智者",
+        "desc": "人生教练",
+        "fullDesc": "关于目标、动力、健康的建议"
+      },
+      "expert": {
+        "name": "博学者",
+        "desc": "知识专家",
+        "fullDesc": "简单解释复杂话题"
+      }
+    }
+  },
   "settings": {
     "title": "设置",
     "language": "语言",
