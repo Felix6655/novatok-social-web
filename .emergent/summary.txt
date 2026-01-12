@@ -1,174 +1,183 @@
 <analysis>
-**original_problem_statement**: The user wants to build a full-featured web version of a social application called NovaTok Social. The project has been built incrementally, adding features like user authentication (Supabase), content creation (Think, Tarot, Horoscope), and aggregation features (Memories, Saved, Home Feed).
+<original_problem_statement>
+The user wants to upgrade the existing NovaTok Social project to prepare it for future AI features. This involves a significant architectural refactor to make the codebase more modular and scalable.
 
-The most recent series of requests focused on building a TikTok-style Reels feature in phases:
--   **Phase 0**: Create the full-screen, scroll-snap UI with placeholder content cards from existing features (Think, Tarot, etc.).
--   **Phase 1**: Add local video file upload functionality, using session-based s for playback.
--   **Phase 2**: Add in-browser video recording functionality, also using s.
--   **Phase 3 (current)**: Upgrade the Reels feature to persist videos to Supabase Storage and their metadata to a Supabase database table, removing the need to re-link files after a page refresh.
+The project is to be delivered in phases, with the immediate focus being **Phase 1: Foundation**.
+
+**Phase 1 Requirements:**
+1.  **Audit**: Audit all existing routes and tabs to identify dead UI (UI that isn't wired to any logic).
+2.  **Folder Structure**: Create and normalize the folder structure to separate concerns:
+    *   
+        *    (routing)
+        *    (shared UI)
+        *    (feature-specific logic and components)
+        *    (central API client)
+        *   
+        *   
+        *   
+        *   
+3.  **API Client**: Implement a central API client/service layer for handling HTTP requests, authentication, retries, and standardized errors.
+4.  **Environment Variables**: Add robust handling for environment variables, distinguishing between public () and server-only secrets.
+5.  **Shared UI Patterns**: Create shared components for Loading, Error, and Empty states.
+6.  **Refactor Two Tabs**: Refactor at least two existing feature tabs to use the new modular architecture and central service layer.
+</original_problem_statement>
 
 **User's preferred language**: English
 
 **what currently exists?**
-A comprehensive Next.js 14 web application for NovaTok Social with a dark theme and responsive layout.
+A feature-rich Next.js 14 web application, NovaTok Social, operating primarily in a demo mode. It uses  and client-side data generation for most features.
 
-Key features implemented:
--   **Authentication**: Full Supabase auth with a -based development fallback.
--   **Core Content Pages**: , , ,  for creating different types of content.
--   **Aggregation Pages**:
-    -   : A timeline of past user activity.
-    -   : A page to view bookmarked items from across the app.
-    -   : A central feed aggregating all user content, acting as the app's main landing page.
--   **Reels Feature ()**: A full-screen, TikTok-style vertical feed.
-    -   **Phase 0 (UI)**: Displays content from Think, Tarot, etc., as full-screen cards.
-    -   **Phase 1 (Upload)**: Supports uploading video files (.mp4, .webm) which are playable in the current session using s.
-    -   **Phase 2 (Record)**: Supports recording video directly from the camera, also playable in the current session via s.
--   **Persistence Model**: The app operates in a dual mode. When Supabase keys are provided in , it uses Supabase for auth and data. Otherwise, it gracefully falls back to  for all data persistence, allowing for full development and testing without a backend setup.
+**Key Features Completed:**
+-   **Core UI:** A responsive dark-themed layout with a persistent sidebar, a new global footer, and a premium animated constellation background.
+-   **Reels & Rooms:** Video reels (persisted to Supabase if configured) and real-time video rooms (powered by LiveKit if configured).
+-   **Horoscope:** A visually rich sign selection grid using custom cinematic poster images for each zodiac sign.
+-   **SoulMate:** An advanced dating/matching feature with a swipeable UI. It uses a sophisticated client-side generator to create 5,000 realistic synthetic profiles, including fields like job, education, and height. The infrastructure is in place to use local photorealistic AI-generated images (from ), though the images themselves have not been provided yet.
+-   **Music:** A fully integrated  page with a discover feed, genre filters, and a persistent mini-player. It was migrated from an external link to an internal route.
+-   **Global Footer:** A compact, responsive, site-wide footer with link columns, a functional newsletter subscription form, and social media links.
 
 **Last working item**:
--   Last item agent was working: Implementing **Reels Phase 3**, which involves persisting uploaded and recorded videos to Supabase Storage and their metadata to a new  database table. The agent has already updated the  with the new SQL schema, created a Supabase helper file (), and modified the main storage layer () to use these new functions. The agent was about to modify the aggregation layer to handle the new asynchronous data fetching.
--   Status: **IN PROGRESS**
+-   Last item agent was working: The agent was instructed to begin **Phase 1: Foundation** of a major architectural upgrade. The agent acknowledged the task and performed an initial audit by listing the application's page routes.
+-   Status: **NOT STARTED**
 -   Agent Testing Done: N
--   Which testing method agent to use? **Manual testing**. This is a complex feature involving file uploads, database writes, and frontend state. The flow needs to be tested manually by interacting with the UI. The next agent should:
-    1.  Ensure Supabase credentials are set up.
-    2.  Go to , upload and record videos.
-    3.  Refresh the page and verify the videos persist and play without requiring a re-link.
-    4.  Verify deletion removes the video from the UI, DB, and Storage.
-    5.  Remove Supabase credentials and verify the old  fallback with re-link still works.
+-   Which testing method agent to use? This is a large refactoring task. The agent should test incrementally. After refactoring each feature, it should use the **frontend testing agent** (screenshot tool) to verify the UI remains intact and functional.
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Complete and verify the Reels Phase 3 - Supabase Persistence feature. (P0)
+-   Issue 1: (P0) Perform Phase 1 Architectural Upgrade.
 
   Issues Detail:
-  -   **Issue 1**: Complete and verify Reels Phase 3.
-      -   **Attempted fixes**: The agent has laid the groundwork by creating the Supabase helper functions and integrating them into the storage layer. No fixes have been attempted as the implementation is incomplete.
-      -   **Next debug checklist**: The core issue is that data fetching for reels is now  but the components that consume it are still synchronous.
-          1.  **Modify **: Convert the  function to be . It must  the result of  (from ) before merging it with other content types.
-          2.  **Modify **:
-              -   The  hook that calls  must be updated to handle the  call.
-              -   Introduce a loading state (e.g., ) to manage the asynchronous data fetching. Display a spinner or skeleton loader while  is true.
-              -   Update the upload/record success handlers (, ) to re-fetch the reels list to show the newly persisted video.
-              -   Conditionally render the re-link UI. It should only appear if a video's  is missing AND Supabase is *not* configured ().
-              -   Add a progress indicator UI for when videos are being uploaded to Supabase Storage.
-          3.  **Test thoroughly**: Follow the manual testing steps outlined in the Last working item section.
-      -   **Why fix this issue and what will be achieved with the fix?** This will complete the Reels feature by providing proper persistence, making it a core, permanent feature of the application rather than a session-based demo.
-      -   **Status**: IN PROGRESS
-      -   **Is recurring issue?** N
-      -   **Should Test frontend/backend/both after fix?** Both (Frontend UI and Supabase backend integration).
-      -   **Blocked on other issue**: None
+  - **Issue 1**: Perform Phase 1 Architectural Upgrade.
+     - **Attempted fixes**: None. The agent has only listed files.
+     - **Next debug checklist**:
+         1.  Create the new  directory.
+         2.  Create the subdirectories: , , , , , , .
+         3.  Begin moving existing files into the new structure (e.g., move  to ,  to ,  contents into , , etc.).
+         4.  Update all import paths across the application to reflect the new structure.
+         5.  Create a central API service file in  to handle future API calls.
+         6.  Create shared , , and  state components in .
+         7.  Select two simple features (e.g., Horoscope, Tarot) and refactor their logic to align with the new feature-based structure.
+     - **Why fix this issue and what will be achieved with the fix?** To fulfill the user's direct request to make the codebase more modular, scalable, and ready for future AI feature integrations.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** Frontend
+     - **Blocked on other issue**: None
 
 **In progress Task List**:
-There are no partially completed tasks other than the Last working item listed above.
+-   Task 1: Phase 1: Foundation - Architectural Upgrade (P0)
+
+ Task Detail:
+  - **Task 1**: Phase 1: Foundation - Architectural Upgrade
+     - **Where to resume**: The agent has completed the initial audit. The next step is to create the new  directory and its subfolders, and then begin migrating existing code into the new structure.
+     - **What will be achieved with this?** A more organized, maintainable, and scalable codebase, laying the groundwork for future AI feature development.
+     - **Status**: NOT STARTED
+     - **Should Test frontend/backend/both after fix?** Frontend
+     - **Blocked on something**: No
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **(P0) Provide Supabase Credentials & Run Migrations**: The user needs to populate  with their Supabase URL/key and run the SQL from  (including the new  table) to test the new feature.
-    -   **(P1) Connect V1 Features to Supabase**: Migrate data persistence for , , , , and  from  to Supabase. The SQL is already in the README.
+    -   **(P0) Phase 2: AI Studio**: Implement a new AI Studio tab for AI image and video generation, as requested by the user.
+    -   **(P1) Phase 3: Reels + Social Loop**: Integrate the outputs of the AI Studio into the Reels feature.
 -   **Future Tasks**:
-    -   **(P1) Implement Backend for Placeholder Pages**: Build out functionality for , , , and .
-    -   **(P1) Implement Go Live Phase 2**: Integrate a real-time streaming backend (e.g., WebRTC) for the  feature.
-    -   **(P2) Implement Real Logic for Generators**: Replace local data generators with dynamic, backend-driven logic (e.g., AI/LLM APIs).
-    -   **(P2) Reels Enhancements**: Add comments, likes, and a For You feed algorithm.
-    -   **(P2) Implement SoulMate Matching**: Build the backend matching algorithm for the  feature.
+    -   **(P1) Music Deep Integration**: The previous task to add generated artwork, a Continue Listening home page widget, music attachments for posts, and a token rewards system for the Music feature. This was superseded by the architecture upgrade but remains a future goal.
+    -   **(P1) Connect V1 Features to Supabase**: Migrate data persistence for , , , and  from  to a real backend.
+    -   **(P1) Social Feed Backend Integration**: Connect the Social Feed MVP to a backend for real users, posts, and comments.
+    -   **(P2) Implement Go Live Backend**: Upgrade the  feature to use LiveKit's broadcast capabilities.
 
 **Completed work in this session**
--   **Go Live Phase 1**: Verified the UI for requesting camera/mic permissions and showing a video preview.
--   **Global Animation Pass**: Added lightweight CSS transitions for page fade-in, sidebar collapse/expand, and button/chip micro-interactions.
--   **Memories Feature**: Implemented  page, aggregating content from , , and  into a unified timeline.
--   **Saved Feature**: Implemented  page and added Save toggles to , , , and  pages.
--   **Home Feed (Phase 1)**: Implemented  page, aggregating all user content types into a central feed and setting it as the main landing page.
--   **Reels Feature (Phase 0, 1, 2)**:
-    -   Created the TikTok-style UI for  (Phase 0).
-    -   Added local video file upload using s (Phase 1).
-    -   Added in-browser video recording using  and s (Phase 2).
+-   **NovaTok Music Link**: Added a permanent external link to the sidebar, then later converted it to an internal link.
+-   **Constellation Background**: Implemented a new, premium, animated constellation background ().
+-   **Horoscope UI Upgrade**: Replaced icon-based zodiac selectors with cinematic poster images ().
+-   **SoulMate Feature (MVP & Enhancements)**:
+    -   Built a client-side generator for 5,000 synthetic profiles ().
+    -   Created swipeable profile cards, match modals, and settings UI ().
+    -   Enhanced realism with more data fields (job, education, etc.) and UI polish (badges, skeleton loading).
+    -   Implemented infrastructure to support photorealistic AI-generated photos from a local directory ().
+-   **Global Footer**: Created and integrated a responsive, site-wide footer, then refactored it to be more compact ().
+-   **NovaTok Music Integration**: Migrated the feature from an external site to a fully integrated internal route at  with a functional UI and mini-player.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: Linter warnings for  and .
-    -   **Details**: These warnings appear on pages that load client-side state (like ) within a  hook.
-    -   **Why it's not fixed**: This is an intentional and standard pattern in Next.js to prevent server-client hydration mismatches. The agent correctly identified this as a non-issue that should be ignored.
+   - **Issue 1**: Linter warnings for .
+     - **Debug checklist**: These are noted as intentional to handle client-side state fetching in the app's demo-first architecture. They should be ignored as fixing them could cause hydration errors.
+     - **Why to solve this issue and what will be achieved with this?** This is not an issue to be solved.
+     - **Should Test frontend/backend/both after fix**: N/A
+     - **Is recurring issue?** Y
 
 **Known issue recurrence from previous fork**
--   None.
+- None.
 
 **Code Architecture**
+The current architecture is a standard Next.js 14 App Router structure. The user has requested a migration to the following new structure:
 
 
 **Key Technical Concepts**
 -   **Framework**: Next.js 14 (App Router)
 -   **Styling**: Tailwind CSS, 
--   **Database**: Supabase (PostgreSQL)
--   **File Storage**: Supabase Storage
--   **Authentication**: Supabase Auth
+-   **Database/Auth**: Supabase (optional, via env vars)
+-   **Real-time Video**: LiveKit (optional, via env vars)
 -   **Architecture**:
-    -   **Dual Persistence Mode**: The application is architected to use Supabase when configured, otherwise it falls back to . This logic is encapsulated within the  storage modules.
-    -   **Client-Side Data Fetching**: Most pages use  hooks to fetch data on the client, accommodating the dual persistence model.
-    -   **Media Handling**: Uses  and  for client-side video handling.
+    -   **Demo Mode First**: Features are built to work in a UI-only mode using  and client-side data generation, and can be upgraded with backend credentials.
+    -   **Client-Side State**: Extensive use of  and .
+    -   **Upcoming Refactor**: The app is about to be refactored into a more modular, feature-based architecture.
 
 **key DB schema**
-Defined in .
 -   : 
--   : 
--   : 
--   : 
--   ****: 
 
 **changes in tech stack**
--   No new dependencies were added. The project now leverages Supabase Storage in addition to the Supabase database.
+-   None in this session.
 
 **All files of reference**
--   **/app/app/(app)/reels/page.js**: The main UI component for the Reels feature. Needs to be updated to handle async loading and conditional UI for Supabase mode.
--   **/app/lib/reels/storage.js**: The abstraction layer for reels data. Now contains logic to switch between  and Supabase.
--   **/app/lib/reels/supabase.js**: New file containing all Supabase-specific functions for reels (uploading to storage, DB operations, signed URLs).
--   **/app/lib/reels/aggregate.js**: The utility that combines video reels with content reels. Needs to be made .
--   **/app/README.md**: Contains the new SQL schema for the  table and bucket setup instructions.
--   **/app/app/(app)/layout.js**: The main layout file, updated to include links to  and .
+-   Files to be created/moved as part of the refactor (see **Code Architecture**).
+-   : The main layout file, modified multiple times to add the sidebar link, constellation background, and footer.
+-   : The complex client-side data generator for the SoulMate feature.
+-   : The new global footer component.
+-   : The new internal music page.
 
 **Areas that need refactoring**:
--   None. The code is modular, though the  file has grown large and could potentially be broken down into smaller components in the future.
+-   The entire project is the subject of the next refactoring task as per the user's latest request.
+-   The file  remains a very large monolithic component that should be broken down.
 
 **key api endpoints**
--   No custom Next.js API routes. All database and storage interactions are done client-side directly with the Supabase SDK.
+-   : Mints a client-side access token for joining a LiveKit room.
 
 **Critical Info for New Agent**
--   **Complete the Async Transition for Reels**: The immediate task is to update  and  to handle asynchronous data fetching from Supabase. The feature is currently in a non-functional intermediate state.
--   **Dual Persistence Model is Key**: Remember that all new data features must support both the Supabase (production) and  (development) backends. The logic in  is a good template for this.
--   **Ignore Linter Hydration Warnings**: The  warnings are intentional. Do not fix them.
--   **Test with and without Supabase**: To fully verify Reels Phase 3, you must test the flow with a configured Supabase project and also test the  fallback by temporarily removing the  variables.
+-   **Your immediate and only priority is to execute Phase 1 of the architectural upgrade.** The user has pivoted from feature development to a foundational refactor.
+-   Do not work on the Music Deep Integration task (message #240). This task has been superseded.
+-   Follow the Phase 1 plan precisely: create the new  directory structure, move existing files, update imports, and then refactor two small features to use the new pattern.
+-   The goal is to establish a scalable foundation for future AI features. This is a structural task, not a feature-building task.
 
 **documents created in this job**
--   Updated  with new SQL schema and setup instructions.
--   Updated  implicitly through the README.
+-    (placeholder for upcoming images).
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: (Msg 267) Request to implement Reels Phase 2: Record video from camera. (COMPLETED)
-2.  **Agent**: (Msg 268-326) Successfully implemented in-browser video recording for reels.
-3.  **User**: (Msg 238) Request to implement Reels Phase 1: Video file upload. (COMPLETED)
-4.  **Agent**: (Msg 239-266) Successfully implemented local video upload for reels.
-5.  **User**: (Msg 209) Request to implement Reels Phase 0: The UI/UX structure. (COMPLETED)
-6.  **Agent**: (Msg 210-237) Successfully implemented the TikTok-style UI for reels.
-7.  **User**: (Msg 168) Request to implement Feed Phase 1: A Home feed. (COMPLETED)
-8.  **Agent**: (Msg 169-208) Successfully implemented the  page.
-9.  **User**: (Msg 85) Request to implement the Saved feature. (COMPLETED)
-10. **Agent**: (Msg 86-167) Successfully implemented the  page and integrated save toggles across the app.
+1.  **User**: Start Phase 1 of a major architectural upgrade. (PENDING)
+2.  **User**: Finalize NovaTok Music with deep integration (artwork, rewards, etc.). (SUPERSEDED)
+3.  **User**: Refactor the footer to be more compact. (COMPLETED)
+4.  **User**: Build a site-wide footer. (COMPLETED)
+5.  **User**: Awaiting photorealistic image upload for SoulMate. (ADDRESSED - infrastructure is ready)
+6.  **User**: Implement infrastructure for local photorealistic photos. (COMPLETED)
+7.  **User**: Decided to use Lorelei DiceBear avatars for SoulMate. (COMPLETED, but then superseded)
+8.  **User**: Asked for a decision on synthetic avatar source. (ADDRESSED)
+9.  **User**: Improve SoulMate realism with more data and UI polish. (COMPLETED)
+10. **User**: Build a SoulMate demo dataset with 5,000 profiles. (COMPLETED)
 
 **Project Health Check:**
--   **Broken**: The  page is temporarily broken because the data fetching was changed to be async at the storage layer but the UI components have not yet been updated to handle it.
--   **Mocked**: All V1 features (, , , ) use local, deterministic generators. The Go Live feature is a UI-only mock.
+-   **Broken**: None.
+-   **Mocked**: Almost all features rely on client-side mock data, , or data generators. This includes Social Feed, Go Live, SoulMate, Music, and core content pages. This is the intended demo mode behavior.
 
 **3rd Party Integrations**
--   **@supabase/supabase-js**: Used for authentication, database (PostgreSQL), and file storage (Supabase Storage). Requires User-provided API Keys (, ).
+-   **@supabase/supabase-js**: For Auth, DB, and Storage. Requires User-provided API Keys.
+-   **LiveKit**: For real-time video. Requires User-provided API Keys.
 
 **Testing status**
--   Testing agent used after significant changes: NO
+-   Testing agent used after significant changes: NO (Agent used  for manual verification).
 -   Troubleshoot agent used after agent stuck in loop: NO
 -   Test files created: None.
--   Known regressions: The  page is currently non-functional until the async data fetching is fully implemented in the UI.
+-   Known regressions: None.
 
 **Credentials to test flow:**
--   No credentials are required to test the application in  fallback mode.
--   To test the new Reels Phase 3 functionality, the user must provide their Supabase project URL and anon key in a  file and run the SQL migrations from .
+-   No credentials are required. The application runs in a full-featured demo mode by default.
 
 **What agent forgot to execute**
--   The agent did not forget any tasks. It is in the middle of a multi-step implementation for Reels Phase 3 and has paused at a logical point before modifying the UI layer. The next step is to continue this implementation.
+-   The agent was about to begin the deep integration of the Music feature but was interrupted by the user with a new, higher-priority task to refactor the entire application architecture. The agent correctly pivoted to the new task.
+
 </analysis>
