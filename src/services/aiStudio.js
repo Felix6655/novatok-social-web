@@ -310,10 +310,10 @@ export async function postImageToReels({ imageUrl, prompt, caption = '' }) {
     url: imageUrl,
     prompt,
     caption: caption || `AI Generated: ${prompt}`,
+    createdAt: new Date().toISOString(),
     metadata: {
       source: 'ai-studio',
     },
-    timestamp: Date.now(),
   })
 }
 
@@ -326,11 +326,11 @@ export async function postVideoToReels({ videoUrl, prompt, caption = '' }) {
     url: videoUrl,
     prompt,
     caption: caption || `AI Generated Video: ${prompt}`,
+    createdAt: new Date().toISOString(),
     metadata: {
       source: 'ai-studio',
       mediaType: 'video',
     },
-    timestamp: Date.now(),
   })
 }
 
