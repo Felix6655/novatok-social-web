@@ -236,13 +236,17 @@ function Sidebar({ pathname }) {
 
       {/* Account Section */}
       <div className="p-3 border-t border-gray-800">
-        <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Account
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            {t('nav.account')}
+          </span>
+          <LanguageSwitcher variant="minimal" />
         </div>
         <ul className="space-y-0.5 mt-1">
           {accountItems.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
+            const itemLabel = item.labelKey.includes('.') ? t(item.labelKey) : item.labelKey
             return (
               <li key={item.href}>
                 <Link
@@ -254,7 +258,7 @@ function Sidebar({ pathname }) {
                   }`}
                 >
                   <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`} />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-sm font-medium">{itemLabel}</span>
                 </Link>
               </li>
             )
@@ -271,7 +275,7 @@ function Sidebar({ pathname }) {
               ) : (
                 <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               )}
-              <span className="text-sm font-medium">Sign Out</span>
+              <span className="text-sm font-medium">{t('nav.signOut')}</span>
             </button>
           </li>
         </ul>
