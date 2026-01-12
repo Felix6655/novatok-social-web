@@ -404,60 +404,60 @@ export default function AppLayout({ children }) {
 
   return (
     <I18nProvider>
-    <ToastProvider>
-      {/* Premium Constellation Background - behind all content */}
-      <ConstellationBackground />
-      
-      <div className="min-h-screen flex flex-col relative" style={{ zIndex: 1 }}>
-        <div className="flex flex-1">
-          {/* Desktop Sidebar */}
-          <Sidebar pathname={pathname} />
+      <ToastProvider>
+        {/* Premium Constellation Background - behind all content */}
+        <ConstellationBackground />
+        
+        <div className="min-h-screen flex flex-col relative" style={{ zIndex: 1 }}>
+          <div className="flex flex-1">
+            {/* Desktop Sidebar */}
+            <Sidebar pathname={pathname} />
 
-          {/* Main Content */}
-          <main className="flex-1 md:ml-64 pb-20 md:pb-0">
-            <div className="max-w-4xl mx-auto p-4 md:p-6 animate-fade-in">
-              {children}
-            </div>
-          </main>
+            {/* Main Content */}
+            <main className="flex-1 md:ml-64 pb-20 md:pb-0">
+              <div className="max-w-4xl mx-auto p-4 md:p-6 animate-fade-in">
+                {children}
+              </div>
+            </main>
+          </div>
+
+          {/* Site-wide Footer - hidden on mobile (mobile has bottom nav) */}
+          <div className="hidden md:block md:ml-64">
+            <Footer />
+          </div>
+
+          {/* Mobile Bottom Navigation (unchanged) */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50">
+            <ul className="flex justify-around items-center">
+              {mobileNavItems.map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
+                        isActive
+                          ? 'text-purple-400'
+                          : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} />
+                      <span className="text-[10px] font-medium">{item.label}</span>
+                      {isActive && (
+                        <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-purple-400 animate-scale-in" />
+                      )}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
         </div>
-
-        {/* Site-wide Footer - hidden on mobile (mobile has bottom nav) */}
-        <div className="hidden md:block md:ml-64">
-          <Footer />
-        </div>
-
-        {/* Mobile Bottom Navigation (unchanged) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[hsl(0,0%,5%)] border-t border-gray-800 px-1 py-1.5 z-50">
-          <ul className="flex justify-around items-center">
-            {mobileNavItems.map((item) => {
-              const isActive = pathname === item.href
-              const Icon = item.icon
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
-                      isActive
-                        ? 'text-purple-400'
-                        : 'text-gray-500 hover:text-gray-300'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} />
-                    <span className="text-[10px] font-medium">{item.label}</span>
-                    {isActive && (
-                      <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-purple-400 animate-scale-in" />
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-      </div>
-      
-      {/* Global Reminder Popup */}
-      <ReminderPopup />
-    </ToastProvider>
+        
+        {/* Global Reminder Popup */}
+        <ReminderPopup />
+      </ToastProvider>
     </I18nProvider>
   )
 }
