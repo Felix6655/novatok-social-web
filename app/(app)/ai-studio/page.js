@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { 
   Wand2, 
@@ -17,6 +17,8 @@ import {
   Copy,
   Check,
   Play,
+  Clock,
+  Loader2,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 
@@ -25,10 +27,16 @@ import { Loading, Empty, ErrorDisplay } from '@/src/components/common'
 import { 
   generateImage, 
   downloadImage, 
-  shareImage, 
+  downloadVideo,
+  shareImage,
+  shareVideo,
   copyImageUrl,
-  postToReels,
-  checkAiStatus 
+  postImageToReels,
+  postVideoToReels,
+  checkAiStatus,
+  checkVideoStatus,
+  startVideoGeneration,
+  pollVideoUntilComplete,
 } from '@/src/services/aiStudio'
 import { 
   getHistory, 
@@ -39,16 +47,26 @@ import {
   SIZE_PRESETS 
 } from '@/lib/ai-studio/storage'
 
+// Aspect ratio presets for video
+const ASPECT_RATIO_PRESETS = [
+  { id: '16:9', name: 'Landscape', ratio: '16:9' },
+  { id: '9:16', name: 'Portrait', ratio: '9:16' },
+  { id: '1:1', name: 'Square', ratio: '1:1' },
+]
+
+// Duration presets (in seconds)
+const DURATION_PRESETS = [3, 5, 7]
+
 export default function AIStudioPage() {
   const { t } = useTranslation()
   const { toast } = useToast()
   
   // UI State
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState('image') // 'image' | 'video' (video coming later)
+  const [activeTab, setActiveTab] = useState('image')
   const [showHistory, setShowHistory] = useState(false)
   
-  // Generation State
+  // Image Generation State
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [selectedStyle, setSelectedStyle] = useState('none')
@@ -57,12 +75,26 @@ export default function AIStudioPage() {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   
+  // Video Generation State
+  const [videoPrompt, setVideoPrompt] = useState('')
+  const [videoNegativePrompt, setVideoNegativePrompt] = useState('')
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState('16:9')
+  const [selectedDuration, setSelectedDuration] = useState(5)
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [videoStatus, setVideoStatus] = useState('')
+  const [videoError, setVideoError] = useState(null)
+  const [videoResult, setVideoResult] = useState(null)
+  const [currentPredictionId, setCurrentPredictionId] = useState(null)
+  const pollingRef = useRef(false)
+  
   // History State
   const [history, setHistory] = useState([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   
   // API Status
   const [apiStatus, setApiStatus] = useState(null)
+  const [videoApiStatus, setVideoApiStatus] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
 
   // Initialize and load history (async)
@@ -84,13 +116,26 @@ export default function AIStudioPage() {
     
     loadHistory()
     
-    // Check API status
+    // Check API status for images
     checkAiStatus()
       .then(setApiStatus)
       .catch(err => {
-        console.warn('[AI Studio] API status check failed:', err)
+        console.warn('[AI Studio] Image API status check failed:', err)
         setApiStatus({ status: 'not_configured' })
       })
+    
+    // Check API status for video
+    checkVideoStatus()
+      .then(setVideoApiStatus)
+      .catch(err => {
+        console.warn('[AI Studio] Video API status check failed:', err)
+        setVideoApiStatus({ status: 'not_configured' })
+      })
+
+    // Cleanup polling on unmount
+    return () => {
+      pollingRef.current = false
+    }
   }, [])
 
   // Refresh history helper
@@ -103,8 +148,11 @@ export default function AIStudioPage() {
     }
   }, [])
 
-  // Generate image
-  const handleGenerate = useCallback(async () => {
+  // ==========================================
+  // Image Generation Handlers
+  // ==========================================
+
+  const handleGenerateImage = useCallback(async () => {
     if (!prompt.trim()) {
       toast({ type: 'error', message: t('aiStudio.promptRequired') })
       return
@@ -124,7 +172,6 @@ export default function AIStudioPage() {
         negativePrompt: negativePrompt.trim(),
       })
       
-      // Save to history
       const record = {
         id: generationId,
         type: 'image',
@@ -147,7 +194,6 @@ export default function AIStudioPage() {
       console.error('[AI Studio] Generation error:', err)
       setError(err)
       
-      // Save failed attempt to history
       await saveGeneration({
         id: generationId,
         type: 'image',
@@ -164,14 +210,122 @@ export default function AIStudioPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [prompt, selectedStyle, selectedSize, negativePrompt, toast, refreshHistory])
+  }, [prompt, selectedStyle, selectedSize, negativePrompt, toast, refreshHistory, t])
 
-  // Download handler (cross-platform)
-  const handleDownload = useCallback(async () => {
-    if (!result?.resultUrl) return
+  // ==========================================
+  // Video Generation Handlers
+  // ==========================================
+
+  const handleGenerateVideo = useCallback(async () => {
+    if (!videoPrompt.trim()) {
+      toast({ type: 'error', message: t('aiStudio.promptRequired') })
+      return
+    }
+    
+    setIsGeneratingVideo(true)
+    setVideoError(null)
+    setVideoResult(null)
+    setVideoProgress(0)
+    setVideoStatus('starting')
+    pollingRef.current = true
+    
+    const generationId = generateId()
     
     try {
-      const { success } = await downloadImage(result.resultUrl, `novatok-ai-${result.id}`)
+      // Start video generation
+      const startResponse = await startVideoGeneration({
+        prompt: videoPrompt.trim(),
+        negativePrompt: videoNegativePrompt.trim(),
+        aspectRatio: selectedAspectRatio,
+        durationSeconds: selectedDuration,
+      })
+      
+      setCurrentPredictionId(startResponse.id)
+      setVideoStatus('processing')
+      
+      // Poll until complete
+      const finalResult = await pollVideoUntilComplete(
+        startResponse.id,
+        (status) => {
+          if (!pollingRef.current) return
+          setVideoProgress(status.progress || 0)
+          setVideoStatus(status.status)
+        },
+        2500, // Poll every 2.5 seconds
+        120   // Max 5 minutes
+      )
+      
+      if (!pollingRef.current) return
+      
+      // Save successful generation
+      const record = {
+        id: generationId,
+        type: 'video',
+        prompt: videoPrompt.trim(),
+        aspectRatio: selectedAspectRatio,
+        duration: selectedDuration,
+        resultUrl: finalResult.videoUrl,
+        model: finalResult.model,
+        status: 'completed',
+        createdAt: finalResult.createdAt || new Date().toISOString(),
+        metadata: {
+          predictionId: startResponse.id,
+          metrics: finalResult.metrics,
+        },
+      }
+      
+      await saveGeneration(record)
+      await refreshHistory()
+      setVideoResult(record)
+      
+      toast({ type: 'success', message: t('aiStudio.videoGenerated') })
+    } catch (err) {
+      console.error('[AI Studio] Video generation error:', err)
+      if (!pollingRef.current) return
+      
+      setVideoError(err)
+      
+      await saveGeneration({
+        id: generationId,
+        type: 'video',
+        prompt: videoPrompt.trim(),
+        aspectRatio: selectedAspectRatio,
+        duration: selectedDuration,
+        status: 'failed',
+        error: err.message,
+        createdAt: new Date().toISOString(),
+      })
+      await refreshHistory()
+      
+      toast({ type: 'error', message: err.message || t('aiStudio.videoFailed') })
+    } finally {
+      setIsGeneratingVideo(false)
+      setCurrentPredictionId(null)
+      pollingRef.current = false
+    }
+  }, [videoPrompt, videoNegativePrompt, selectedAspectRatio, selectedDuration, toast, refreshHistory, t])
+
+  // Cancel video generation
+  const handleCancelVideo = useCallback(() => {
+    pollingRef.current = false
+    setIsGeneratingVideo(false)
+    setVideoStatus('')
+    setVideoProgress(0)
+    toast({ type: 'info', message: 'Generation cancelled' })
+  }, [toast])
+
+  // ==========================================
+  // Shared Handlers
+  // ==========================================
+
+  const handleDownload = useCallback(async () => {
+    const url = activeTab === 'video' ? videoResult?.resultUrl : result?.resultUrl
+    const id = activeTab === 'video' ? videoResult?.id : result?.id
+    if (!url) return
+    
+    try {
+      const downloadFn = activeTab === 'video' ? downloadVideo : downloadImage
+      const { success } = await downloadFn(url, `novatok-ai-${id}`)
       if (success) {
         toast({ type: 'success', message: t('aiStudio.downloadStarted') })
       } else {
@@ -180,27 +334,23 @@ export default function AIStudioPage() {
     } catch (err) {
       toast({ type: 'error', message: t('aiStudio.downloadFailed') })
     }
-  }, [result, toast])
+  }, [activeTab, result, videoResult, toast, t])
 
-  // Share handler (cross-platform)
   const handleShare = useCallback(async () => {
-    if (!result?.resultUrl) return
+    const url = activeTab === 'video' ? videoResult?.resultUrl : result?.resultUrl
+    if (!url) return
     
     try {
-      const { success, method } = await shareImage(result.resultUrl, 'Check out my AI creation!')
+      const shareFn = activeTab === 'video' ? shareVideo : shareImage
+      const { success, method } = await shareFn(url, 'Check out my AI creation!')
       if (success) {
-        if (method === 'clipboard') {
-          toast({ type: 'success', message: t('aiStudio.urlCopied') })
-        } else {
-          toast({ type: 'success', message: t('aiStudio.shared') })
-        }
+        toast({ type: 'success', message: method === 'clipboard' ? t('aiStudio.urlCopied') : t('aiStudio.shared') })
       }
     } catch (err) {
       toast({ type: 'error', message: t('aiStudio.shareFailed') })
     }
-  }, [result, toast])
+  }, [activeTab, result, videoResult, toast, t])
 
-  // Copy prompt
   const handleCopyPrompt = useCallback(async (text, id) => {
     try {
       const { success } = await copyImageUrl(text)
@@ -211,48 +361,56 @@ export default function AIStudioPage() {
     } catch (err) {
       toast({ type: 'error', message: t('aiStudio.shareFailed') })
     }
-  }, [toast])
+  }, [toast, t])
 
-  // Load from history
-  const handleLoadFromHistory = useCallback((item) => {
-    setPrompt(item.prompt || '')
-    setSelectedStyle(item.style || 'none')
-    setSelectedSize(item.size || 'square')
-    if (item.status === 'completed' && item.resultUrl) {
-      setResult(item)
-    }
-    setShowHistory(false)
-  }, [])
-
-  // Delete from history (async)
-  const handleDeleteFromHistory = useCallback(async (id, e) => {
-    e.stopPropagation()
-    await deleteGeneration(id)
-    await refreshHistory()
-    if (result?.id === id) {
-      setResult(null)
-    }
-    toast({ type: 'success', message: t('aiStudio.deleted') })
-  }, [result, toast, refreshHistory])
-
-  // Post to Reels (cross-platform using pendingPost store)
   const handlePostToReels = useCallback(async () => {
-    if (!result?.resultUrl) return
+    const isVideo = activeTab === 'video'
+    const currentResult = isVideo ? videoResult : result
+    if (!currentResult?.resultUrl) return
     
     try {
-      await postToReels({
-        imageUrl: result.resultUrl,
-        prompt: result.prompt,
+      const postFn = isVideo ? postVideoToReels : postImageToReels
+      await postFn({
+        [isVideo ? 'videoUrl' : 'imageUrl']: currentResult.resultUrl,
+        prompt: currentResult.prompt,
       })
       
       toast({ type: 'success', message: t('aiStudio.openingReels') })
-      
-      // Navigate to Reels
       window.location.href = '/reels?upload=ai'
     } catch (err) {
       toast({ type: 'error', message: t('aiStudio.preparePostFailed') })
     }
-  }, [result, toast])
+  }, [activeTab, result, videoResult, toast, t])
+
+  const handleLoadFromHistory = useCallback((item) => {
+    if (item.type === 'video') {
+      setActiveTab('video')
+      setVideoPrompt(item.prompt || '')
+      setSelectedAspectRatio(item.aspectRatio || '16:9')
+      setSelectedDuration(item.duration || 5)
+      if (item.status === 'completed' && item.resultUrl) {
+        setVideoResult(item)
+      }
+    } else {
+      setActiveTab('image')
+      setPrompt(item.prompt || '')
+      setSelectedStyle(item.style || 'none')
+      setSelectedSize(item.size || 'square')
+      if (item.status === 'completed' && item.resultUrl) {
+        setResult(item)
+      }
+    }
+    setShowHistory(false)
+  }, [])
+
+  const handleDeleteFromHistory = useCallback(async (id, e) => {
+    e.stopPropagation()
+    await deleteGeneration(id)
+    await refreshHistory()
+    if (result?.id === id) setResult(null)
+    if (videoResult?.id === id) setVideoResult(null)
+    toast({ type: 'success', message: t('aiStudio.deleted') })
+  }, [result, videoResult, toast, refreshHistory, t])
 
   // Loading state
   if (!mounted) {
@@ -264,6 +422,9 @@ export default function AIStudioPage() {
   }
 
   const isApiReady = apiStatus?.status === 'ready'
+  const isVideoApiReady = videoApiStatus?.status === 'ready'
+  const currentResult = activeTab === 'video' ? videoResult : result
+  const currentError = activeTab === 'video' ? videoError : error
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -279,7 +440,6 @@ export default function AIStudioPage() {
           </div>
         </div>
         
-        {/* History Toggle */}
         <button
           onClick={() => setShowHistory(!showHistory)}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
@@ -294,14 +454,13 @@ export default function AIStudioPage() {
       </div>
 
       {/* API Status Warning */}
-      {apiStatus && !isApiReady && (
+      {((activeTab === 'image' && apiStatus && !isApiReady) || 
+        (activeTab === 'video' && videoApiStatus && !isVideoApiReady)) && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-amber-200 font-medium">{t('aiStudio.notConfigured')}</p>
-            <p className="text-amber-400/80 text-sm mt-1">
-              {t('aiStudio.notConfiguredDesc')}
-            </p>
+            <p className="text-amber-400/80 text-sm mt-1">{t('aiStudio.notConfiguredDesc')}</p>
           </div>
         </div>
       )}
@@ -328,18 +487,21 @@ export default function AIStudioPage() {
                   onClick={() => handleLoadFromHistory(item)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 transition-colors text-left group"
                 >
-                  {/* Thumbnail */}
                   <div className="w-12 h-12 rounded-lg bg-gray-900 overflow-hidden flex-shrink-0">
                     {item.status === 'completed' && item.resultUrl ? (
-                      <img 
-                        src={item.resultUrl} 
-                        alt="" 
-                        className="w-full h-full object-cover"
-                      />
+                      item.type === 'video' ? (
+                        <div className="w-full h-full flex items-center justify-center bg-violet-500/20">
+                          <Video className="w-5 h-5 text-violet-400" />
+                        </div>
+                      ) : (
+                        <img src={item.resultUrl} alt="" className="w-full h-full object-cover" />
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         {item.status === 'failed' ? (
                           <AlertCircle className="w-5 h-5 text-red-400" />
+                        ) : item.type === 'video' ? (
+                          <Video className="w-5 h-5 text-gray-600" />
                         ) : (
                           <ImageIcon className="w-5 h-5 text-gray-600" />
                         )}
@@ -347,16 +509,18 @@ export default function AIStudioPage() {
                     )}
                   </div>
                   
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">
                       {item.prompt?.substring(0, 50) || 'No prompt'}{item.prompt?.length > 50 ? '...' : ''}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        item.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-red-500/20 text-red-400'
+                        item.type === 'video' ? 'bg-violet-500/20 text-violet-400' : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {item.type === 'video' ? 'Video' : 'Image'}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        item.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                       }`}>
                         {item.status}
                       </span>
@@ -366,7 +530,6 @@ export default function AIStudioPage() {
                     </div>
                   </div>
                   
-                  {/* Actions */}
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => handleDeleteFromHistory(item.id, e)}
@@ -384,11 +547,11 @@ export default function AIStudioPage() {
       )}
 
       {/* Error Display */}
-      {error && (
+      {currentError && (
         <ErrorDisplay 
-          error={error}
-          title={t('aiStudio.generationFailed')}
-          onRetry={handleGenerate}
+          error={currentError}
+          title={activeTab === 'video' ? t('aiStudio.videoFailed') : t('aiStudio.generationFailed')}
+          onRetry={activeTab === 'video' ? handleGenerateVideo : handleGenerateImage}
         />
       )}
 
@@ -397,9 +560,7 @@ export default function AIStudioPage() {
         <button
           onClick={() => setActiveTab('image')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            activeTab === 'image'
-              ? 'bg-violet-600 text-white'
-              : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            activeTab === 'image' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
           }`}
         >
           <ImageIcon className="w-4 h-4" />
@@ -407,188 +568,265 @@ export default function AIStudioPage() {
         </button>
         <button
           onClick={() => setActiveTab('video')}
-          disabled
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-800/50 text-gray-600 cursor-not-allowed"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            activeTab === 'video' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+          }`}
         >
           <Video className="w-4 h-4" />
           {t('aiStudio.videoTab')}
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-500">{t('aiStudio.videoSoon')}</span>
         </button>
       </div>
 
-      {/* Generation Form */}
-      <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-5">
-        {/* Prompt Input */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.promptLabel')}</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t('aiStudio.promptPlaceholder')}
-            className="w-full h-28 px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none"
-            maxLength={1000}
-            disabled={isGenerating}
-          />
-          <p className="text-xs text-gray-600 text-right mt-1">{prompt.length}/1000</p>
-        </div>
-
-        {/* Negative Prompt (collapsible) */}
-        <details className="group">
-          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors">
-            {t('aiStudio.negativePromptLabel')}
-          </summary>
-          <textarea
-            value={negativePrompt}
-            onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder={t('aiStudio.negativePromptPlaceholder')}
-            className="w-full h-16 mt-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none text-sm"
-            maxLength={500}
-            disabled={isGenerating}
-          />
-        </details>
-
-        {/* Style Selector */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.styleLabel')}</label>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {STYLE_PRESETS.map((style) => (
-              <button
-                key={style.id}
-                onClick={() => setSelectedStyle(style.id)}
-                disabled={isGenerating}
-                className={`p-2 rounded-xl text-center transition-all ${
-                  selectedStyle === style.id
-                    ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-2 ring-offset-[hsl(0,0%,7%)]'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                } disabled:opacity-50`}
-              >
-                <span className="block text-xs font-medium truncate">{t(`aiStudio.styles.${style.id}`)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Size Selector */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.sizeLabel')}</label>
-          <div className="flex gap-2 flex-wrap">
-            {SIZE_PRESETS.map((size) => (
-              <button
-                key={size.id}
-                onClick={() => setSelectedSize(size.id)}
-                disabled={isGenerating}
-                className={`px-3 py-2 rounded-xl transition-all ${
-                  selectedSize === size.id
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                } disabled:opacity-50`}
-              >
-                <span className="text-xs font-medium">{t(`aiStudio.sizes.${size.id}`)}</span>
-                <span className="text-[10px] text-gray-500 ml-1">({size.ratio})</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Generate Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating || !isApiReady || !prompt.trim()}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGenerating ? (
-            <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>{t('aiStudio.generating')}</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              <span>{t('aiStudio.generateButton')}</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Result Display */}
-      {result && result.status === 'completed' && (
-        <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 overflow-hidden">
-          {/* Image Preview */}
-          <div className="relative aspect-square max-h-[500px] bg-gray-900">
-            <img
-              src={result.resultUrl}
-              alt={result.prompt}
-              className="w-full h-full object-contain"
+      {/* IMAGE GENERATION FORM */}
+      {activeTab === 'image' && (
+        <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-5">
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.promptLabel')}</label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={t('aiStudio.promptPlaceholder')}
+              className="w-full h-28 px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none"
+              maxLength={1000}
+              disabled={isGenerating}
             />
+            <p className="text-xs text-gray-600 text-right mt-1">{prompt.length}/1000</p>
+          </div>
+
+          <details className="group">
+            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors">
+              {t('aiStudio.negativePromptLabel')}
+            </summary>
+            <textarea
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder={t('aiStudio.negativePromptPlaceholder')}
+              className="w-full h-16 mt-2 px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none text-sm"
+              maxLength={500}
+              disabled={isGenerating}
+            />
+          </details>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.styleLabel')}</label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {STYLE_PRESETS.map((style) => (
+                <button
+                  key={style.id}
+                  onClick={() => setSelectedStyle(style.id)}
+                  disabled={isGenerating}
+                  className={`p-2 rounded-xl text-center transition-all ${
+                    selectedStyle === style.id
+                      ? 'bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-2 ring-offset-[hsl(0,0%,7%)]'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  } disabled:opacity-50`}
+                >
+                  <span className="block text-xs font-medium truncate">{t(`aiStudio.styles.${style.id}`)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.sizeLabel')}</label>
+            <div className="flex gap-2 flex-wrap">
+              {SIZE_PRESETS.map((size) => (
+                <button
+                  key={size.id}
+                  onClick={() => setSelectedSize(size.id)}
+                  disabled={isGenerating}
+                  className={`px-3 py-2 rounded-xl transition-all ${
+                    selectedSize === size.id ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  } disabled:opacity-50`}
+                >
+                  <span className="text-xs font-medium">{t(`aiStudio.sizes.${size.id}`)}</span>
+                  <span className="text-[10px] text-gray-500 ml-1">({size.ratio})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={handleGenerateImage}
+            disabled={isGenerating || !isApiReady || !prompt.trim()}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <><RefreshCw className="w-5 h-5 animate-spin" /><span>{t('aiStudio.generating')}</span></>
+            ) : (
+              <><Sparkles className="w-5 h-5" /><span>{t('aiStudio.generateButton')}</span></>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* VIDEO GENERATION FORM */}
+      {activeTab === 'video' && (
+        <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-5">
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.promptLabel')}</label>
+            <textarea
+              value={videoPrompt}
+              onChange={(e) => setVideoPrompt(e.target.value)}
+              placeholder="A spaceship flying through a colorful nebula, cinematic..."
+              className="w-full h-28 px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none"
+              maxLength={1000}
+              disabled={isGeneratingVideo}
+            />
+            <p className="text-xs text-gray-600 text-right mt-1">{videoPrompt.length}/1000</p>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.aspectRatio')}</label>
+            <div className="flex gap-2 flex-wrap">
+              {ASPECT_RATIO_PRESETS.map((ar) => (
+                <button
+                  key={ar.id}
+                  onClick={() => setSelectedAspectRatio(ar.id)}
+                  disabled={isGeneratingVideo}
+                  className={`px-4 py-2 rounded-xl transition-all ${
+                    selectedAspectRatio === ar.id ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  } disabled:opacity-50`}
+                >
+                  <span className="text-sm font-medium">{ar.name}</span>
+                  <span className="text-xs text-gray-400 ml-2">({ar.ratio})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.duration')}</label>
+            <div className="flex gap-2">
+              {DURATION_PRESETS.map((dur) => (
+                <button
+                  key={dur}
+                  onClick={() => setSelectedDuration(dur)}
+                  disabled={isGeneratingVideo}
+                  className={`px-4 py-2 rounded-xl transition-all ${
+                    selectedDuration === dur ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  } disabled:opacity-50`}
+                >
+                  <Clock className="w-4 h-4 inline mr-1" />
+                  <span className="text-sm">{dur}s</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Video Progress Bar */}
+          {isGeneratingVideo && (
+            <div className="bg-gray-900 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-400 capitalize">{videoStatus || 'Starting'}...</span>
+                <span className="text-sm text-violet-400">{Math.round(videoProgress)}%</span>
+              </div>
+              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-all duration-500"
+                  style={{ width: `${videoProgress}%` }}
+                />
+              </div>
+              <button
+                onClick={handleCancelVideo}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={handleGenerateVideo}
+            disabled={isGeneratingVideo || !isVideoApiReady || !videoPrompt.trim()}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold flex items-center justify-center gap-2 hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGeneratingVideo ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /><span>{t('aiStudio.videoGenerating')}</span></>
+            ) : (
+              <><Video className="w-5 h-5" /><span>{t('aiStudio.generateVideo')}</span></>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* RESULT DISPLAY */}
+      {currentResult && currentResult.status === 'completed' && (
+        <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="relative aspect-video max-h-[500px] bg-gray-900">
+            {currentResult.type === 'video' ? (
+              <video
+                src={currentResult.resultUrl}
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <img
+                src={currentResult.resultUrl}
+                alt={currentResult.prompt}
+                className="w-full h-full object-contain"
+              />
+            )}
           </div>
           
-          {/* Info & Actions */}
           <div className="p-5 space-y-4">
-            {/* Prompt Display */}
             <div className="flex items-start gap-2">
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">{t('aiStudio.prompt')}</p>
-                <p className="text-sm text-gray-300">{result.prompt}</p>
+                <p className="text-sm text-gray-300">{currentResult.prompt}</p>
               </div>
               <button
-                onClick={() => handleCopyPrompt(result.prompt, result.id)}
+                onClick={() => handleCopyPrompt(currentResult.prompt, currentResult.id)}
                 className="p-2 rounded-lg bg-gray-800 text-gray-400 hover:text-white transition-colors"
               >
-                {copiedId === result.id ? (
-                  <Check className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
+                {copiedId === currentResult.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
             
-            {/* Metadata */}
             <div className="flex flex-wrap gap-2">
               <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
-                {t(`aiStudio.styles.${result.style}`) || t('aiStudio.styles.none')}
+                {currentResult.type === 'video' ? 'Video' : t(`aiStudio.styles.${currentResult.style}`) || t('aiStudio.styles.none')}
               </span>
+              {currentResult.type === 'video' && currentResult.aspectRatio && (
+                <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
+                  {currentResult.aspectRatio}
+                </span>
+              )}
+              {currentResult.type !== 'video' && (
+                <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
+                  {t(`aiStudio.sizes.${currentResult.size}`) || t('aiStudio.sizes.square')}
+                </span>
+              )}
               <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
-                {t(`aiStudio.sizes.${result.size}`) || t('aiStudio.sizes.square')}
-              </span>
-              <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
-                {result.model?.split('/').pop() || 'flux'}
+                {currentResult.model?.split('/').pop() || 'flux'}
               </span>
             </div>
             
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                {t('aiStudio.download')}
+              <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors">
+                <Download className="w-4 h-4" />{t('aiStudio.download')}
               </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors"
-              >
-                <Share2 className="w-4 h-4" />
-                {t('aiStudio.share')}
+              <button onClick={handleShare} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors">
+                <Share2 className="w-4 h-4" />{t('aiStudio.share')}
               </button>
-              <button
-                onClick={handlePostToReels}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white hover:from-pink-500 hover:to-purple-500 transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                {t('aiStudio.postToReels')}
+              <button onClick={handlePostToReels} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white hover:from-pink-500 hover:to-purple-500 transition-colors">
+                <Play className="w-4 h-4" />{t('aiStudio.postToReels')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Empty State when no result */}
-      {!result && !isGenerating && !error && (
+      {/* Empty State */}
+      {!currentResult && !isGenerating && !isGeneratingVideo && !currentError && (
         <Empty
-          icon={ImageIcon}
-          title={t('aiStudio.readyToCreate')}
-          description={t('aiStudio.readyToCreateDesc')}
+          icon={activeTab === 'video' ? Video : ImageIcon}
+          title={activeTab === 'video' ? t('aiStudio.videoReadyToCreate') : t('aiStudio.readyToCreate')}
+          description={activeTab === 'video' ? t('aiStudio.videoReadyToCreateDesc') : t('aiStudio.readyToCreateDesc')}
         />
       )}
     </div>
