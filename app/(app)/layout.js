@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import { 
   Lightbulb, Bell, MessageCircle, User, Sparkles, Loader2, AlertTriangle,
   Brain, Star, Heart, Bot, AlarmClock, Video, Settings, LogOut,
@@ -14,6 +15,11 @@ import { supabase, getSession, signOut } from '@/lib/supabase/client'
 import { isDevelopment } from '@/lib/supabase/health'
 import ConstellationBackground from '@/components/ui/ConstellationBackground'
 import Footer from '@/components/Footer'
+import { I18nProvider } from '@/src/i18n/I18nProvider'
+import { LanguageSwitcher } from '@/src/components/LanguageSwitcher'
+
+// Import i18n to ensure it's initialized
+import '@/src/i18n'
 
 // Sidebar navigation structure
 const sidebarSections = [
