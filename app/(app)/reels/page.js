@@ -59,7 +59,17 @@ const TYPE_ICONS = {
   [FEED_TYPES.TAROT]: Sparkles,
   [FEED_TYPES.HOROSCOPE]: Star,
   [FEED_TYPES.THINKING]: Brain,
-  [REEL_TYPES.VIDEO]: Film
+  [REEL_TYPES.VIDEO]: Film,
+  'ai_image': Wand2, // AI Studio generated image
+}
+
+// AI Image reel config
+const AI_IMAGE_CONFIG = {
+  gradient: 'from-violet-600/80 via-fuchsia-600/60 to-pink-700/80',
+  accentColor: 'text-violet-400',
+  bgAccent: 'bg-violet-500/20',
+  borderAccent: 'border-violet-500/40',
+  emoji: '🎨'
 }
 
 // Quick action buttons for empty state
