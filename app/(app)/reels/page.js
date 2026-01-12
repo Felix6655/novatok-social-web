@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Lightbulb, Sparkles, Star, Brain, Bookmark, 
@@ -8,7 +9,7 @@ import {
   CheckCircle, XCircle, Play, Pause, Volume2, VolumeX,
   Upload, Film, AlertCircle, RefreshCw, Trash2,
   Video, Mic, MicOff, Circle, Square, RotateCcw, Check, X,
-  Info, Loader2, Heart, Flame, Smile
+  Info, Loader2, Heart, Flame, Smile, Wand2, Image as ImageIcon
 } from 'lucide-react'
 import { 
   getAllReelItems,
@@ -44,6 +45,13 @@ import {
 } from '@/lib/reels/reactions'
 import { saveItem, isSaved, unsaveItem } from '@/lib/saved/storage'
 import { useToast } from '@/components/ui/ToastProvider'
+
+// Cross-platform pending post store
+import { consumePendingPost } from '@/src/services/pendingPost'
+import storage from '@/src/services/storage'
+
+// Storage key for AI-generated reels
+const AI_REELS_STORAGE_KEY = 'novatok_ai_reels'
 
 // Type icons
 const TYPE_ICONS = {
