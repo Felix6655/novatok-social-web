@@ -107,6 +107,44 @@
     "close": "閉じる",
     "technicalDetails": "技術的な詳細"
   },
+  "aiChat": {
+    "title": "AIとチャット",
+    "subtitle": "AI搭載の会話",
+    "chattingWith": "{{name}}とチャット中",
+    "selectPersona": "チャットするAIを選択",
+    "selectPersonaDesc": "会話を始めるパーソナリティを選んでください",
+    "notConfigured": "AIサービス未設定",
+    "notConfiguredDesc": "AIチャットを有効にするには、環境変数にOPENAI_API_KEYを設定してください。",
+    "newChat": "新しいチャット",
+    "clearChat": "チャットをクリア",
+    "clearChatConfirm": "この会話をクリアしますか？",
+    "messagePlaceholder": "メッセージを入力...",
+    "send": "送信",
+    "typing": "入力中...",
+    "emptyChat": "会話を始める",
+    "emptyChatDesc": "下にメッセージを入力して開始してください",
+    "errorRetry": "再試行",
+    "errorOccurred": "エラーが発生しました",
+    "messageTooLong": "メッセージが長すぎます（最大2000文字）",
+    "messageEmpty": "メッセージを入力してください",
+    "personas": {
+      "creative": {
+        "name": "ミューズ",
+        "desc": "クリエイティブパートナー",
+        "fullDesc": "アート、執筆、ブレインストーミングを支援"
+      },
+      "coach": {
+        "name": "セージ",
+        "desc": "ライフコーチ",
+        "fullDesc": "目標、モチベーション、ウェルネスのアドバイス"
+      },
+      "expert": {
+        "name": "アトラス",
+        "desc": "知識エキスパート",
+        "fullDesc": "複雑なトピックをシンプルに説明"
+      }
+    }
+  },
   "settings": {
     "title": "設定",
     "language": "言語",
