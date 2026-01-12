@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Image from 'next/image'
 import { 
   Wand2, 
   Sparkles, 
@@ -17,13 +16,19 @@ import {
   Copy,
   Check,
   Play,
-  X
 } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
 
 // New architecture imports
 import { Loading, Empty, ErrorDisplay } from '@/src/components/common'
-import { generateImage, downloadImage, shareImage, checkAiStatus } from '@/src/services/aiStudio'
+import { 
+  generateImage, 
+  downloadImage, 
+  shareImage, 
+  copyImageUrl,
+  postToReels,
+  checkAiStatus 
+} from '@/src/services/aiStudio'
 import { 
   getHistory, 
   saveGeneration, 
@@ -52,15 +57,30 @@ export default function AIStudioPage() {
   
   // History State
   const [history, setHistory] = useState([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   
   // API Status
   const [apiStatus, setApiStatus] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
 
-  // Initialize
+  // Initialize and load history (async)
   useEffect(() => {
     setMounted(true)
-    setHistory(getHistory())
+    
+    // Load history asynchronously
+    async function loadHistory() {
+      setIsLoadingHistory(true)
+      try {
+        const savedHistory = await getHistory()
+        setHistory(savedHistory)
+      } catch (err) {
+        console.error('[AI Studio] Failed to load history:', err)
+      } finally {
+        setIsLoadingHistory(false)
+      }
+    }
+    
+    loadHistory()
     
     // Check API status
     checkAiStatus()
@@ -69,6 +89,16 @@ export default function AIStudioPage() {
         console.warn('[AI Studio] API status check failed:', err)
         setApiStatus({ status: 'not_configured' })
       })
+  }, [])
+
+  // Refresh history helper
+  const refreshHistory = useCallback(async () => {
+    try {
+      const savedHistory = await getHistory()
+      setHistory(savedHistory)
+    } catch (err) {
+      console.error('[AI Studio] Failed to refresh history:', err)
+    }
   }, [])
 
   // Generate image
@@ -106,8 +136,8 @@ export default function AIStudioPage() {
         createdAt: response.generatedAt,
       }
       
-      saveGeneration(record)
-      setHistory(getHistory())
+      await saveGeneration(record)
+      await refreshHistory()
       setResult(record)
       
       toast({ type: 'success', message: 'Image generated!' })
@@ -116,7 +146,7 @@ export default function AIStudioPage() {
       setError(err)
       
       // Save failed attempt to history
-      saveGeneration({
+      await saveGeneration({
         id: generationId,
         type: 'image',
         prompt: prompt.trim(),
@@ -126,36 +156,42 @@ export default function AIStudioPage() {
         error: err.message,
         createdAt: new Date().toISOString(),
       })
-      setHistory(getHistory())
+      await refreshHistory()
       
       toast({ type: 'error', message: err.message || 'Failed to generate image' })
     } finally {
       setIsGenerating(false)
     }
-  }, [prompt, selectedStyle, selectedSize, negativePrompt, toast])
+  }, [prompt, selectedStyle, selectedSize, negativePrompt, toast, refreshHistory])
 
-  // Download handler
+  // Download handler (cross-platform)
   const handleDownload = useCallback(async () => {
     if (!result?.resultUrl) return
     
     try {
-      await downloadImage(result.resultUrl, `novatok-ai-${result.id}`)
-      toast({ type: 'success', message: 'Download started!' })
+      const { success } = await downloadImage(result.resultUrl, `novatok-ai-${result.id}`)
+      if (success) {
+        toast({ type: 'success', message: 'Download started!' })
+      } else {
+        toast({ type: 'error', message: 'Download failed' })
+      }
     } catch (err) {
       toast({ type: 'error', message: 'Failed to download' })
     }
   }, [result, toast])
 
-  // Share handler
+  // Share handler (cross-platform)
   const handleShare = useCallback(async () => {
     if (!result?.resultUrl) return
     
     try {
-      const shared = await shareImage(result.resultUrl, 'Check out my AI creation!')
-      if (!shared) {
-        // Fallback: copy URL
-        await navigator.clipboard.writeText(result.resultUrl)
-        toast({ type: 'success', message: 'Image URL copied!' })
+      const { success, method } = await shareImage(result.resultUrl, 'Check out my AI creation!')
+      if (success) {
+        if (method === 'clipboard') {
+          toast({ type: 'success', message: 'Image URL copied!' })
+        } else {
+          toast({ type: 'success', message: 'Shared!' })
+        }
       }
     } catch (err) {
       toast({ type: 'error', message: 'Failed to share' })
@@ -165,9 +201,11 @@ export default function AIStudioPage() {
   // Copy prompt
   const handleCopyPrompt = useCallback(async (text, id) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
+      const { success } = await copyImageUrl(text)
+      if (success) {
+        setCopiedId(id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
     } catch (err) {
       toast({ type: 'error', message: 'Failed to copy' })
     }
@@ -184,31 +222,34 @@ export default function AIStudioPage() {
     setShowHistory(false)
   }, [])
 
-  // Delete from history
-  const handleDeleteFromHistory = useCallback((id, e) => {
+  // Delete from history (async)
+  const handleDeleteFromHistory = useCallback(async (id, e) => {
     e.stopPropagation()
-    deleteGeneration(id)
-    setHistory(getHistory())
+    await deleteGeneration(id)
+    await refreshHistory()
     if (result?.id === id) {
       setResult(null)
     }
     toast({ type: 'success', message: 'Deleted' })
-  }, [result, toast])
+  }, [result, toast, refreshHistory])
 
-  // Post to Reels
-  const handlePostToReels = useCallback(() => {
+  // Post to Reels (cross-platform using pendingPost store)
+  const handlePostToReels = useCallback(async () => {
     if (!result?.resultUrl) return
     
-    // Store the image URL in sessionStorage for the Reels page to pick up
-    sessionStorage.setItem('novatok_reels_upload', JSON.stringify({
-      type: 'ai_image',
-      url: result.resultUrl,
-      prompt: result.prompt,
-      timestamp: Date.now(),
-    }))
-    
-    toast({ type: 'success', message: 'Opening Reels...' })
-    window.location.href = '/reels?upload=ai'
+    try {
+      await postToReels({
+        imageUrl: result.resultUrl,
+        prompt: result.prompt,
+      })
+      
+      toast({ type: 'success', message: 'Opening Reels...' })
+      
+      // Navigate to Reels
+      window.location.href = '/reels?upload=ai'
+    } catch (err) {
+      toast({ type: 'error', message: 'Failed to prepare post' })
+    }
   }, [result, toast])
 
   // Loading state
@@ -268,7 +309,9 @@ export default function AIStudioPage() {
         <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5">
           <h3 className="text-sm font-medium text-white mb-3">Generation History</h3>
           
-          {history.length === 0 ? (
+          {isLoadingHistory ? (
+            <Loading variant="skeleton" count={2} />
+          ) : history.length === 0 ? (
             <Empty 
               icon={ImageIcon}
               title="No generations yet"
