@@ -434,20 +434,7 @@ export default function AppLayout({ children }) {
                 const Icon = item.icon
                 return (
                   <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
-                        isActive
-                          ? 'text-purple-400'
-                          : 'text-gray-500 hover:text-gray-300'
-                      }`}
-                    >
-                      <Icon className={`w-5 h-5 transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} />
-                      <span className="text-[10px] font-medium">{item.label}</span>
-                      {isActive && (
-                        <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-purple-400 animate-scale-in" />
-                      )}
-                    </Link>
+                    <MobileNavLink item={item} isActive={isActive} Icon={Icon} />
                   </li>
                 )
               })}
