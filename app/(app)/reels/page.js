@@ -61,6 +61,7 @@ const TYPE_ICONS = {
   [FEED_TYPES.THINKING]: Brain,
   [REEL_TYPES.VIDEO]: Film,
   'ai_image': Wand2, // AI Studio generated image
+  'ai_video': Video, // AI Studio generated video
 }
 
 // AI Image reel config
@@ -70,6 +71,15 @@ const AI_IMAGE_CONFIG = {
   bgAccent: 'bg-violet-500/20',
   borderAccent: 'border-violet-500/40',
   emoji: '🎨'
+}
+
+// AI Video reel config
+const AI_VIDEO_CONFIG = {
+  gradient: 'from-cyan-600/80 via-blue-600/60 to-indigo-700/80',
+  accentColor: 'text-cyan-400',
+  bgAccent: 'bg-cyan-500/20',
+  borderAccent: 'border-cyan-500/40',
+  emoji: '🎬'
 }
 
 // Quick action buttons for empty state
