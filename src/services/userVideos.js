@@ -87,12 +87,12 @@ export async function clearUserVideos() {
 
 /**
  * Post a recorded video to Reels via pendingPost
- * @param {Object} params - { blobUrl, caption, duration }
+ * @param {Object} params - { videoUrl, caption, duration }
  */
-export async function postVideoToReels({ blobUrl, caption, duration }) {
+export async function postVideoToReels({ videoUrl, caption, duration }) {
   await setPendingPost({
     type: 'user_video',
-    url: blobUrl,
+    url: videoUrl,
     caption: caption || '',
     duration: duration || 0,
     createdAt: new Date().toISOString(),
