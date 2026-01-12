@@ -107,6 +107,44 @@
     "close": "Schließen",
     "technicalDetails": "Technische Details"
   },
+  "aiChat": {
+    "title": "Chat mit KIs",
+    "subtitle": "KI-gestützte Gespräche",
+    "chattingWith": "Chat mit {{name}}",
+    "selectPersona": "Wähle eine KI zum Chatten",
+    "selectPersonaDesc": "Wähle eine Persönlichkeit zum Starten",
+    "notConfigured": "KI-Dienst Nicht Konfiguriert",
+    "notConfiguredDesc": "Setze OPENAI_API_KEY in deiner Umgebung, um KI-Chat zu aktivieren.",
+    "newChat": "Neuer Chat",
+    "clearChat": "Chat Löschen",
+    "clearChatConfirm": "Diese Konversation löschen?",
+    "messagePlaceholder": "Nachricht eingeben...",
+    "send": "Senden",
+    "typing": "Schreibt...",
+    "emptyChat": "Gespräch starten",
+    "emptyChatDesc": "Gib unten eine Nachricht ein, um zu beginnen",
+    "errorRetry": "Erneut versuchen",
+    "errorOccurred": "Etwas ist schiefgelaufen",
+    "messageTooLong": "Nachricht zu lang (max 2000 Zeichen)",
+    "messageEmpty": "Bitte gib eine Nachricht ein",
+    "personas": {
+      "creative": {
+        "name": "Muse",
+        "desc": "Kreativer Partner",
+        "fullDesc": "Hilft bei Kunst, Schreiben, Brainstorming"
+      },
+      "coach": {
+        "name": "Sage",
+        "desc": "Life Coach",
+        "fullDesc": "Beratung zu Zielen, Motivation, Wohlbefinden"
+      },
+      "expert": {
+        "name": "Atlas",
+        "desc": "Wissensexperte",
+        "fullDesc": "Erklärt komplexe Themen einfach"
+      }
+    }
+  },
   "settings": {
     "title": "Einstellungen",
     "language": "Sprache",
