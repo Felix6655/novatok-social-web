@@ -1448,7 +1448,9 @@ function RecordModal({ isOpen, onClose, onRecorded }) {
 
 export default function ReelsPage() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [reels, setReels] = useState([])
+  const [aiReels, setAiReels] = useState([]) // AI-generated images
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -1460,7 +1462,28 @@ export default function ReelsPage() {
   const [relinkTarget, setRelinkTarget] = useState(null)
   const [videoObjectUrls, setVideoObjectUrls] = useState({}) // id -> objectUrl (for local mode)
   const [isMuted, setIsMuted] = useState(true)
+  const [pendingPostProcessed, setPendingPostProcessed] = useState(false)
   const containerRef = useRef(null)
+
+  // Load AI reels from storage
+  const loadAiReels = useCallback(async () => {
+    try {
+      const stored = await storage.getItem(AI_REELS_STORAGE_KEY, [])
+      return Array.isArray(stored) ? stored : []
+    } catch (error) {
+      console.error('[Reels] Failed to load AI reels:', error)
+      return []
+    }
+  }, [])
+
+  // Save AI reels to storage
+  const saveAiReels = useCallback(async (reels) => {
+    try {
+      await storage.setItem(AI_REELS_STORAGE_KEY, reels)
+    } catch (error) {
+      console.error('[Reels] Failed to save AI reels:', error)
+    }
+  }, [])
 
   // Load reels function
   const loadReels = useCallback(async () => {
@@ -1468,8 +1491,16 @@ export default function ReelsPage() {
     setLoadError(null)
     
     try {
+      // Load regular reels
       const result = await getAllReelItems(50)
-      setReels(result.reels)
+      
+      // Load AI reels from storage
+      const storedAiReels = await loadAiReels()
+      setAiReels(storedAiReels)
+      
+      // Combine: AI reels first (newest), then regular reels
+      const combinedReels = [...storedAiReels, ...result.reels]
+      setReels(combinedReels)
       setIsSupabaseMode(result.isSupabaseMode)
     } catch (error) {
       console.error('Failed to load reels:', error)
@@ -1477,23 +1508,93 @@ export default function ReelsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [loadAiReels])
+
+  // Process pending post from AI Studio
+  const processPendingPost = useCallback(async () => {
+    if (pendingPostProcessed) return
+    
+    try {
+      const pending = await consumePendingPost()
+      
+      if (!pending) return
+      
+      // Validate pending post
+      if (!pending.url || !pending.type) {
+        console.warn('[Reels] Invalid pending post - missing url or type:', pending)
+        return
+      }
+      
+      // Only process AI images for now
+      if (pending.type !== 'ai_image') {
+        console.warn('[Reels] Unknown pending post type:', pending.type)
+        return
+      }
+      
+      // Create AI reel entry
+      const newAiReel = {
+        id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'ai_image',
+        isAiImage: true,
+        title: 'AI Generated',
+        summary: pending.prompt || 'AI-generated image',
+        imageUrl: pending.url,
+        metadata: {
+          prompt: pending.prompt,
+          caption: pending.caption || '',
+          source: pending.metadata?.source || 'ai-studio',
+        },
+        createdAt: new Date(pending.timestamp || Date.now()).toISOString(),
+      }
+      
+      // Load existing AI reels and prepend new one
+      const existingAiReels = await loadAiReels()
+      const updatedAiReels = [newAiReel, ...existingAiReels].slice(0, 50) // Keep max 50
+      
+      // Save to storage
+      await saveAiReels(updatedAiReels)
+      setAiReels(updatedAiReels)
+      
+      // Update combined reels
+      setReels(prev => {
+        // Remove old AI reels and prepend new ones
+        const nonAiReels = prev.filter(r => !r.isAiImage)
+        return [...updatedAiReels, ...nonAiReels]
+      })
+      
+      // Show toast if came from AI Studio
+      const uploadParam = searchParams?.get('upload')
+      if (uploadParam === 'ai') {
+        toast({ type: 'success', message: '🎨 AI image added to Reels!' })
+      }
+      
+      // Go to top to show the new reel
+      setCurrentIndex(0)
+      
+    } catch (error) {
+      console.error('[Reels] Failed to process pending post:', error)
+      // Don't show error toast - gracefully fail
+    } finally {
+      setPendingPostProcessed(true)
+    }
+  }, [pendingPostProcessed, loadAiReels, saveAiReels, searchParams, toast])
 
   useEffect(() => {
     setMounted(true)
     // Only mark as needing relink in local mode (checked later)
   }, [])
 
+  // Load reels and process pending post on mount
   useEffect(() => {
     if (!mounted) return
 
-    // Mark videos as needing relink ONLY if not in Supabase mode
-    // We do this after loading to know the mode
-    loadReels().then(() => {
-      // After loading, if NOT in Supabase mode, mark for relink
-      // This is handled inside the loadReels result
-    })
-  }, [mounted, loadReels])
+    const initReels = async () => {
+      await loadReels()
+      await processPendingPost()
+    }
+    
+    initReels()
+  }, [mounted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // After we know the mode, mark for relink if local
   useEffect(() => {
