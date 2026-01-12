@@ -387,7 +387,7 @@ export default function AIStudioPage() {
       {error && (
         <ErrorDisplay 
           error={error}
-          title="Generation Failed"
+          title={t('aiStudio.generationFailed')}
           onRetry={handleGenerate}
         />
       )}
@@ -403,7 +403,7 @@ export default function AIStudioPage() {
           }`}
         >
           <ImageIcon className="w-4 h-4" />
-          Image
+          {t('aiStudio.imageTab')}
         </button>
         <button
           onClick={() => setActiveTab('video')}
@@ -411,8 +411,8 @@ export default function AIStudioPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-800/50 text-gray-600 cursor-not-allowed"
         >
           <Video className="w-4 h-4" />
-          Video
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-500">Soon</span>
+          {t('aiStudio.videoTab')}
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-500">{t('aiStudio.videoSoon')}</span>
         </button>
       </div>
 
@@ -420,11 +420,11 @@ export default function AIStudioPage() {
       <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-5">
         {/* Prompt Input */}
         <div>
-          <label className="text-xs text-gray-500 block mb-2">Describe what you want to create</label>
+          <label className="text-xs text-gray-500 block mb-2">{t('aiStudio.promptLabel')}</label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="A majestic dragon flying over a crystal castle at sunset, epic fantasy scene..."
+            placeholder={t('aiStudio.promptPlaceholder')}
             className="w-full h-28 px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 resize-none"
             maxLength={1000}
             disabled={isGenerating}
