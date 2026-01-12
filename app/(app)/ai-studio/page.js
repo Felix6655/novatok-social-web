@@ -40,6 +40,7 @@ import {
 } from '@/lib/ai-studio/storage'
 
 export default function AIStudioPage() {
+  const { t } = useTranslation()
   const { toast } = useToast()
   
   // UI State
