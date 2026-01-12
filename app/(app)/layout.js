@@ -457,5 +457,6 @@ export default function AppLayout({ children }) {
       {/* Global Reminder Popup */}
       <ReminderPopup />
     </ToastProvider>
+    </I18nProvider>
   )
 }
