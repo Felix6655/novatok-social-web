@@ -562,21 +562,21 @@ export default function AIStudioPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                Download
+                {t('aiStudio.download')}
               </button>
               <button
                 onClick={handleShare}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 text-white hover:bg-gray-700 transition-colors"
               >
                 <Share2 className="w-4 h-4" />
-                Share
+                {t('aiStudio.share')}
               </button>
               <button
                 onClick={handlePostToReels}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white hover:from-pink-500 hover:to-purple-500 transition-colors"
               >
                 <Play className="w-4 h-4" />
-                Post to Reels
+                {t('aiStudio.postToReels')}
               </button>
             </div>
           </div>
@@ -587,8 +587,8 @@ export default function AIStudioPage() {
       {!result && !isGenerating && !error && (
         <Empty
           icon={ImageIcon}
-          title="Ready to create"
-          description="Enter a prompt above and click Generate to create AI art."
+          title={t('aiStudio.readyToCreate')}
+          description={t('aiStudio.readyToCreateDesc')}
         />
       )}
     </div>
