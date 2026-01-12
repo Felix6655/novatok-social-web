@@ -81,17 +81,29 @@ const accountItems = [
 
 // Mobile nav shows fewer items (unchanged)
 const mobileNavItems = [
-  { href: '/think', label: 'Think', icon: Lightbulb },
-  { href: '/thinking', label: 'Thinking', icon: Brain },
-  { href: '/soulmate', label: 'SoulMate', icon: Heart },
-  { href: '/notifications', label: 'Alerts', icon: Bell },
-  { href: '/profile', label: 'Profile', icon: User },
+  { href: '/think', labelKey: 'nav.think', icon: Lightbulb },
+  { href: '/thinking', labelKey: 'nav.thinking', icon: Brain },
+  { href: '/soulmate', labelKey: 'nav.soulmate', icon: Heart },
+  { href: '/notifications', labelKey: 'Alerts', icon: Bell },
+  { href: '/profile', labelKey: 'nav.profile', icon: User },
 ]
+
+// Helper to get translated label
+function useTranslatedLabel(key) {
+  const { t } = useTranslation()
+  // If key doesn't contain a dot, it's not an i18n key - return as is
+  if (!key.includes('.')) return key
+  return t(key)
+}
 
 // Sidebar Section Component
 function SidebarSection({ section, pathname, expandedSections, toggleSection }) {
+  const { t } = useTranslation()
   const isExpanded = expandedSections[section.id]
   const hasActiveItem = section.items.some(item => pathname === item.href)
+  
+  // Get translated label
+  const sectionLabel = section.labelKey.includes('.') ? t(section.labelKey) : section.labelKey
   
   return (
     <div className="mb-2">
@@ -102,12 +114,12 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
             hasActiveItem ? 'text-purple-400' : 'text-gray-500 hover:text-gray-400'
           }`}
         >
-          <span>{section.label}</span>
+          <span>{sectionLabel}</span>
           <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
         </button>
       ) : (
         <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          {section.label}
+          {sectionLabel}
         </div>
       )}
       
@@ -116,6 +128,7 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
           {section.items.map((item, idx) => {
             const isActive = !item.isExternal && pathname === item.href
             const Icon = item.icon
+            const itemLabel = item.labelKey.includes('.') ? t(item.labelKey) : item.labelKey
             
             // Shared styling for both internal and external links
             const linkClassName = `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
@@ -127,7 +140,7 @@ function SidebarSection({ section, pathname, expandedSections, toggleSection }) 
             const linkContent = (
               <>
                 <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-purple-400' : ''}`} />
-                <span className="text-sm font-medium truncate">{item.label}</span>
+                <span className="text-sm font-medium truncate">{itemLabel}</span>
               </>
             )
             
