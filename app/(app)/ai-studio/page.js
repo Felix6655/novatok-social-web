@@ -499,12 +499,12 @@ export default function AIStudioPage() {
           {isGenerating ? (
             <>
               <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>Generating...</span>
+              <span>{t('aiStudio.generating')}</span>
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              <span>Generate Image</span>
+              <span>{t('aiStudio.generateButton')}</span>
             </>
           )}
         </button>
@@ -527,7 +527,7 @@ export default function AIStudioPage() {
             {/* Prompt Display */}
             <div className="flex items-start gap-2">
               <div className="flex-1">
-                <p className="text-xs text-gray-500 mb-1">Prompt</p>
+                <p className="text-xs text-gray-500 mb-1">{t('aiStudio.prompt')}</p>
                 <p className="text-sm text-gray-300">{result.prompt}</p>
               </div>
               <button
@@ -545,10 +545,10 @@ export default function AIStudioPage() {
             {/* Metadata */}
             <div className="flex flex-wrap gap-2">
               <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
-                {STYLE_PRESETS.find(s => s.id === result.style)?.name || 'No Style'}
+                {t(`aiStudio.styles.${result.style}`) || t('aiStudio.styles.none')}
               </span>
               <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
-                {SIZE_PRESETS.find(s => s.id === result.size)?.name || 'Square'}
+                {t(`aiStudio.sizes.${result.size}`) || t('aiStudio.sizes.square')}
               </span>
               <span className="text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400">
                 {result.model?.split('/').pop() || 'flux'}
