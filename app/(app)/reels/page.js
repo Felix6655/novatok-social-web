@@ -626,6 +626,162 @@ function ContentReelCard({ reel, isActive, onSaveToggle, onReact }) {
   )
 }
 
+// AI Image Reel Card Component
+function AiImageReelCard({ reel, isActive, onSaveToggle, onReact, onDelete }) {
+  const config = AI_IMAGE_CONFIG
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    setSaved(isSaved('ai_image', reel.id))
+  }, [reel.id])
+
+  const handleSave = () => {
+    if (saved) {
+      unsaveItem('ai_image', reel.id)
+      setSaved(false)
+      onSaveToggle?.(false)
+    } else {
+      saveItem({
+        type: 'ai_image',
+        sourceId: reel.id,
+        title: reel.title,
+        summary: reel.summary,
+        metadata: reel.metadata,
+        createdAt: reel.createdAt
+      })
+      setSaved(true)
+      onSaveToggle?.(true)
+    }
+  }
+
+  const handleShare = () => {
+    onSaveToggle?.('share')
+  }
+
+  return (
+    <div className="h-full w-full flex items-center justify-center p-4 md:p-8">
+      <div className="relative w-full max-w-lg h-full max-h-[600px] flex flex-col">
+        {/* Main Card */}
+        <div className={`flex-1 rounded-3xl bg-gradient-to-br ${config.gradient} backdrop-blur-xl border ${config.borderAccent} shadow-2xl overflow-hidden flex flex-col`}>
+          {/* Header */}
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl ${config.bgAccent} flex items-center justify-center border ${config.borderAccent}`}>
+                <Wand2 className={`w-5 h-5 ${config.accentColor}`} />
+              </div>
+              <div>
+                <span className={`text-sm font-semibold ${config.accentColor}`}>
+                  AI Generated
+                </span>
+                <p className="text-xs text-white/60">{formatFeedDate(reel.createdAt)}</p>
+              </div>
+            </div>
+            <span className="px-2 py-1 rounded-full bg-violet-500/30 text-violet-300 text-xs font-medium">
+              🎨 AI Studio
+            </span>
+          </div>
+
+          {/* Image Container */}
+          <div className="flex-1 relative bg-black/30">
+            <img
+              src={reel.imageUrl}
+              alt={reel.metadata?.prompt || 'AI Generated'}
+              className="w-full h-full object-contain"
+            />
+          </div>
+
+          {/* Prompt/Caption Overlay */}
+          <div className="p-4 bg-black/40 backdrop-blur-sm">
+            {reel.metadata?.caption && (
+              <p className="text-white font-medium mb-1">{reel.metadata.caption}</p>
+            )}
+            <p className="text-white/70 text-sm line-clamp-2">
+              {reel.metadata?.prompt || reel.summary}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/50">Swipe for more</span>
+              <div className="flex items-center gap-1">
+                <ChevronUp className="w-4 h-4 text-white/50" />
+                <ChevronDown className="w-4 h-4 text-white/50" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Rail (Right side) */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+16px)] hidden md:flex flex-col gap-4">
+          <button
+            onClick={handleSave}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              saved 
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20'
+            }`}
+            title={saved ? 'Remove from saved' : 'Save'}
+          >
+            <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="w-12 h-12 rounded-full bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all"
+            title="Share"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+
+          {/* Reactions */}
+          <ReactionButtons reelId={reel.id} onReact={onReact} />
+
+          {/* Delete button */}
+          <button
+            onClick={() => onDelete?.(reel.id)}
+            className="w-12 h-12 rounded-full bg-white/10 text-red-400/70 hover:text-red-400 hover:bg-red-500/20 border border-white/20 flex items-center justify-center transition-all"
+            title="Delete"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Mobile Actions */}
+        <div className="md:hidden flex items-center justify-center gap-4 mt-4">
+          <button
+            onClick={handleSave}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              saved 
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                : 'bg-white/10 text-white/70 border border-white/20'
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
+            <span className="text-sm">{saved ? 'Saved' : 'Save'}</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/70 border border-white/20"
+          >
+            <Share2 className="w-4 h-4" />
+            <span className="text-sm">Share</span>
+          </button>
+
+          <button
+            onClick={() => onDelete?.(reel.id)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-red-400/70 border border-white/20"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function EmptyState({ onUploadClick, onRecordClick }) {
   return (
     <div className="h-full w-full flex items-center justify-center p-8">
