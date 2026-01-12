@@ -1,183 +1,190 @@
 <analysis>
+
 <original_problem_statement>
-The user wants to upgrade the existing NovaTok Social project to prepare it for future AI features. This involves a significant architectural refactor to make the codebase more modular and scalable.
+The user wants to upgrade the existing NovaTok Social project to prepare it for future AI features. This involves a significant architectural refactor to make the codebase more modular and scalable, followed by the implementation of new AI-powered features.
 
-The project is to be delivered in phases, with the immediate focus being **Phase 1: Foundation**.
+The project is being delivered in phases.
 
-**Phase 1 Requirements:**
-1.  **Audit**: Audit all existing routes and tabs to identify dead UI (UI that isn't wired to any logic).
-2.  **Folder Structure**: Create and normalize the folder structure to separate concerns:
-    *   
-        *    (routing)
-        *    (shared UI)
-        *    (feature-specific logic and components)
-        *    (central API client)
-        *   
-        *   
-        *   
-        *   
-3.  **API Client**: Implement a central API client/service layer for handling HTTP requests, authentication, retries, and standardized errors.
-4.  **Environment Variables**: Add robust handling for environment variables, distinguishing between public () and server-only secrets.
-5.  **Shared UI Patterns**: Create shared components for Loading, Error, and Empty states.
-6.  **Refactor Two Tabs**: Refactor at least two existing feature tabs to use the new modular architecture and central service layer.
+**Phase 1: Foundation (Completed with constraints)**
+- Create a gradual  folder structure for NEW shared modules.
+- Implement a central, minimal API client.
+- Create shared UI patterns for Loading, Error, and Empty states.
+- Refactor two tabs (Horoscope, Tarot) to use the new architecture without moving their route files.
+
+**Phase 2: AI Studio (In Progress)**
+- Create a new AI Studio tab for AI image and video generation.
+- Implement a server-side proxy for AI provider calls to keep secret keys secure.
+- Implement image generation (Done).
+- Implement asynchronous video generation with status polling (In Progress).
+- Integrate AI Studio outputs with the Reels feed.
+
+**Phase 3: Internationalization (i18n) (Completed)**
+- Add i18n support for 8 languages using .
+- Translate key UI components like the sidebar, AI Studio, and shared components.
 </original_problem_statement>
 
 **User's preferred language**: English
 
 **what currently exists?**
-A feature-rich Next.js 14 web application, NovaTok Social, operating primarily in a demo mode. It uses  and client-side data generation for most features.
+A Next.js 14 web application, NovaTok Social, with a partially refactored architecture. A new  directory exists for shared modules (, , , , ), but existing application routes remain in the  directory as per user constraints.
 
-**Key Features Completed:**
--   **Core UI:** A responsive dark-themed layout with a persistent sidebar, a new global footer, and a premium animated constellation background.
--   **Reels & Rooms:** Video reels (persisted to Supabase if configured) and real-time video rooms (powered by LiveKit if configured).
--   **Horoscope:** A visually rich sign selection grid using custom cinematic poster images for each zodiac sign.
--   **SoulMate:** An advanced dating/matching feature with a swipeable UI. It uses a sophisticated client-side generator to create 5,000 realistic synthetic profiles, including fields like job, education, and height. The infrastructure is in place to use local photorealistic AI-generated images (from ), though the images themselves have not been provided yet.
--   **Music:** A fully integrated  page with a discover feed, genre filters, and a persistent mini-player. It was migrated from an external link to an internal route.
--   **Global Footer:** A compact, responsive, site-wide footer with link columns, a functional newsletter subscription form, and social media links.
+**Key Features Implemented/Refactored in this session:**
+- **Modular Core**: A new  directory houses shared services for API calls, cross-platform storage, a pending post queue, and sharing utilities.
+- **Refactored Tabs**:  and  pages have been refactored to use the new service layer and demonstrate proper loading/error/empty states with history persisted to local storage.
+- **AI Studio (Image Generation)**: A fully functional  page for generating images via Replicate. It uses a secure server-side proxy () to protect the API key. The UI includes prompts, style/size presets, and a generation history viewer.
+- **AI Studio to Reels (Images)**: A Post to Reels feature that successfully adds AI-generated images to the top of the Reels feed using a shared  service.
+- **Internationalization (i18n)**: The application now supports 8 languages (en, es, pt-BR, fr, de, it, ja, zh-CN). A language switcher is available in the sidebar, and key UI elements (navigation, AI Studio, shared components) are translated.
+- **AI Studio (Video Generation - Backend/UI complete)**: The backend API routes ( for starting jobs,  for polling) are created. The AI Studio UI is updated to handle the video generation flow, including polling for async job completion.
 
 **Last working item**:
--   Last item agent was working: The agent was instructed to begin **Phase 1: Foundation** of a major architectural upgrade. The agent acknowledged the task and performed an initial audit by listing the application's page routes.
--   Status: **NOT STARTED**
--   Agent Testing Done: N
--   Which testing method agent to use? This is a large refactoring task. The agent should test incrementally. After refactoring each feature, it should use the **frontend testing agent** (screenshot tool) to verify the UI remains intact and functional.
--   User Testing Done: N
+    - Last item agent was working: Implementing the final step of the AI Video Generation feature: updating the  component to consume and display AI-generated videos from the  service. The agent had just created the backend routes and updated the AI Studio UI and was about to modify the Reels page.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? both. First, the agent should manually verify the API endpoints can start and poll a video job. After the UI is integrated, the agent should use the  to test the end-to-end flow: generate a video in AI Studio, post it to Reels, and verify it appears correctly on the Reels page.
+    - User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: (P0) Perform Phase 1 Architectural Upgrade.
-
+  Issue 1: (P0) Complete AI Video integration into the Reels page.
+  
   Issues Detail:
-  - **Issue 1**: Perform Phase 1 Architectural Upgrade.
-     - **Attempted fixes**: None. The agent has only listed files.
-     - **Next debug checklist**:
-         1.  Create the new  directory.
-         2.  Create the subdirectories: , , , , , , .
-         3.  Begin moving existing files into the new structure (e.g., move  to ,  to ,  contents into , , etc.).
-         4.  Update all import paths across the application to reflect the new structure.
-         5.  Create a central API service file in  to handle future API calls.
-         6.  Create shared , , and  state components in .
-         7.  Select two simple features (e.g., Horoscope, Tarot) and refactor their logic to align with the new feature-based structure.
-     - **Why fix this issue and what will be achieved with the fix?** To fulfill the user's direct request to make the codebase more modular, scalable, and ready for future AI feature integrations.
-     - **Status**: NOT STARTED
-     - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** Frontend
-     - **Blocked on other issue**: None
+  - Issue 1: 
+     - Attempted fixes: The agent has successfully implemented the backend API and the AI Studio frontend. The final piece of connecting it to the Reels page is pending.
+     - Next debug checklist: 
+         1. Open .
+         2. In the  hook that checks for pending posts, add logic to handle .
+         3. Ensure the video data (which includes a video URL) is correctly added to the  state array.
+         4. Create a new  component (similar to the existing  but adapted for AI video posts) or modify the existing one to handle AI video data.
+         5. Update the rendering logic in  to use the appropriate card for  items.
+         6. Ensure the delete handler () also works for video reels.
+     - Why fix this issue and what will be achieved with the fix? This will complete the Phase 2: AI Video Generation task, allowing users to generate videos and see them in their social feed, a core feature request.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on other issue: None
 
 **In progress Task List**:
--   Task 1: Phase 1: Foundation - Architectural Upgrade (P0)
-
+  - Task 1: (P0) Phase 2 Continued: AI Video Generation
+ 
  Task Detail:
-  - **Task 1**: Phase 1: Foundation - Architectural Upgrade
-     - **Where to resume**: The agent has completed the initial audit. The next step is to create the new  directory and its subfolders, and then begin migrating existing code into the new structure.
-     - **What will be achieved with this?** A more organized, maintainable, and scalable codebase, laying the groundwork for future AI feature development.
-     - **Status**: NOT STARTED
-     - **Should Test frontend/backend/both after fix?** Frontend
-     - **Blocked on something**: No
+  - Task 1: 
+     - Where to resume: Modify the file  to handle the consumption and rendering of AI-generated videos passed from the AI Studio.
+     - What will be achieved with this? A complete, end-to-end user flow for creating AI videos and sharing them to the main social feed (Reels).
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on something: No
 
 **Upcoming and Future Tasks**
--   **Upcoming Tasks**:
-    -   **(P0) Phase 2: AI Studio**: Implement a new AI Studio tab for AI image and video generation, as requested by the user.
-    -   **(P1) Phase 3: Reels + Social Loop**: Integrate the outputs of the AI Studio into the Reels feature.
--   **Future Tasks**:
-    -   **(P1) Music Deep Integration**: The previous task to add generated artwork, a Continue Listening home page widget, music attachments for posts, and a token rewards system for the Music feature. This was superseded by the architecture upgrade but remains a future goal.
-    -   **(P1) Connect V1 Features to Supabase**: Migrate data persistence for , , , and  from  to a real backend.
-    -   **(P1) Social Feed Backend Integration**: Connect the Social Feed MVP to a backend for real users, posts, and comments.
-    -   **(P2) Implement Go Live Backend**: Upgrade the  feature to use LiveKit's broadcast capabilities.
+- **Upcoming Tasks**:
+    - (P1) AI Studio: Implement image-to-video generation ().
+- **Future Tasks**:
+    - (P1) Connect V1 Features to Supabase: Migrate data persistence for , , , and  from  to a real backend.
+    - (P1) Social Feed Backend Integration: Connect the Social Feed MVP to a backend for real users, posts, and comments.
+    - (P1) Music Deep Integration: Add generated artwork, a Continue Listening widget, and a token rewards system for the Music feature.
+    - (P2) Implement Go Live Backend: Upgrade the  feature to use LiveKit's broadcast capabilities.
 
 **Completed work in this session**
--   **NovaTok Music Link**: Added a permanent external link to the sidebar, then later converted it to an internal link.
--   **Constellation Background**: Implemented a new, premium, animated constellation background ().
--   **Horoscope UI Upgrade**: Replaced icon-based zodiac selectors with cinematic poster images ().
--   **SoulMate Feature (MVP & Enhancements)**:
-    -   Built a client-side generator for 5,000 synthetic profiles ().
-    -   Created swipeable profile cards, match modals, and settings UI ().
-    -   Enhanced realism with more data fields (job, education, etc.) and UI polish (badges, skeleton loading).
-    -   Implemented infrastructure to support photorealistic AI-generated photos from a local directory ().
--   **Global Footer**: Created and integrated a responsive, site-wide footer, then refactored it to be more compact ().
--   **NovaTok Music Integration**: Migrated the feature from an external site to a fully integrated internal route at  with a functional UI and mini-player.
+- **Phase 1: Foundation**: Created  directory and refactored  &  pages to use new modular services without moving route files.
+- **Phase 2: AI Studio (Image Generation)**: Implemented the AI Studio page with a secure server-side proxy for image generation via Replicate.
+- **Cross-Platform Abstractions**: Created generic services for storage (), sharing (), and inter-page communication ().
+- **Reels Integration (Images)**: Successfully connected AI Studio to the Reels page, allowing users to Post to Reels. A new  was created inside .
+- **Internationalization (i18n)**: Integrated  and translated the sidebar, AI Studio, and shared components into 8 languages, with a functional language switcher.
+- **Phase 2: AI Studio (Video Generation - In Progress)**: Built the backend API routes ( and ) and updated the AI Studio frontend to handle the async video generation flow.
 
 **Earlier issues found/mentioned but not fixed**
-   - **Issue 1**: Linter warnings for .
-     - **Debug checklist**: These are noted as intentional to handle client-side state fetching in the app's demo-first architecture. They should be ignored as fixing them could cause hydration errors.
-     - **Why to solve this issue and what will be achieved with this?** This is not an issue to be solved.
-     - **Should Test frontend/backend/both after fix**: N/A
-     - **Is recurring issue?** Y
+   - Issue 1: Linter warnings for .
+     - Debug checklist: The agent identified these warnings in files like  and . The agent correctly determined these are intentional patterns for handling state with server-side rendering and client-side hydration.
+     - Why to solve this issue and what will be achieved with this? This is not an issue to be solved. The agent suppressed the warnings with  comments, which is the correct action in this context.
+     - Should Test frontend/backend/both after fix: N/A
+     - Is recurring issue? Y
 
 **Known issue recurrence from previous fork**
-- None.
+  - None.
 
 **Code Architecture**
-The current architecture is a standard Next.js 14 App Router structure. The user has requested a migration to the following new structure:
+The architecture is a Next.js 14 App Router application undergoing an incremental refactor.
 
 
 **Key Technical Concepts**
--   **Framework**: Next.js 14 (App Router)
--   **Styling**: Tailwind CSS, 
--   **Database/Auth**: Supabase (optional, via env vars)
--   **Real-time Video**: LiveKit (optional, via env vars)
--   **Architecture**:
-    -   **Demo Mode First**: Features are built to work in a UI-only mode using  and client-side data generation, and can be upgraded with backend credentials.
-    -   **Client-Side State**: Extensive use of  and .
-    -   **Upcoming Refactor**: The app is about to be refactored into a more modular, feature-based architecture.
+- **Framework**: Next.js 14 (App Router)
+- **Styling**: Tailwind CSS, 
+- **AI Integration**: Replicate API for image and video generation.
+- **Architecture**:
+    - **API Proxy Pattern**: Client calls internal API routes () which then securely call the third-party (Replicate) API with a server-side secret key.
+    - **Incremental Refactor**: New shared logic is placed in , while existing feature routes in  are modified in place.
+    - **Client-Side State**: Heavy use of , , and custom hooks () for managing UI state and data fetching.
+    - **Internationalization (i18n)**: Using  and  with JSON translation files.
 
 **key DB schema**
--   : 
+  - No database schema changes were made in this session. The existing  schema is still relevant for Supabase-backed reels.
 
 **changes in tech stack**
--   None in this session.
+  - **Added**:  (for AI generation)
+  - **Added**: , , ,  (for i18n)
 
 **All files of reference**
--   Files to be created/moved as part of the refactor (see **Code Architecture**).
--   : The main layout file, modified multiple times to add the sidebar link, constellation background, and footer.
--   : The complex client-side data generator for the SoulMate feature.
--   : The new global footer component.
--   : The new internal music page.
+- **New Files**:
+  - : All files for services, hooks, components, and i18n.
+  - : Server-side proxy for image generation.
+  - : Server-side proxy to start video generation.
+  - : Server-side proxy to poll video generation status.
+  - : The main UI for the AI Studio feature.
+- **Modified Files**:
+  - : Heavily modified to integrate AI-generated images. **This is the next file to be modified.**
+  - : Modified to add i18n provider, language switcher, and new navigation links.
+  - : Refactored to use new services.
+  - : Refactored to use new services.
+  - : Updated with  path for the new  directory.
+  - : Added new dependencies.
 
 **Areas that need refactoring**:
--   The entire project is the subject of the next refactoring task as per the user's latest request.
--   The file  remains a very large monolithic component that should be broken down.
+- : This file has grown to over 2000 lines and contains multiple components, complex state logic, and data fetching. While the agent correctly followed user constraints by editing it in-place, it is now extremely difficult to maintain and should be broken down into smaller, more manageable components in a future refactoring phase.
 
 **key api endpoints**
--   : Mints a client-side access token for joining a LiveKit room.
+- : Starts an image generation job on Replicate.
+- : Starts a video generation job on Replicate.
+- : Polls the status of a video generation job.
 
 **Critical Info for New Agent**
--   **Your immediate and only priority is to execute Phase 1 of the architectural upgrade.** The user has pivoted from feature development to a foundational refactor.
--   Do not work on the Music Deep Integration task (message #240). This task has been superseded.
--   Follow the Phase 1 plan precisely: create the new  directory structure, move existing files, update imports, and then refactor two small features to use the new pattern.
--   The goal is to establish a scalable foundation for future AI features. This is a structural task, not a feature-building task.
+- **Your immediate priority is to complete the AI Video to Reels integration.** This involves modifying the complex  file. Be extremely careful when editing this file.
+- **Follow user constraints strictly.** The user has repeatedly emphasized an incremental approach. Do not perform large-scale refactors unless explicitly asked.
+- The AI features require a  environment variable to be set in a  file. The application is designed to function with a warning if the key is missing.
+- The i18n system is in place. If you add new UI text, you must add keys to the JSON files in  and use the  function.
 
 **documents created in this job**
--    (placeholder for upcoming images).
+  - : Translation files.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Start Phase 1 of a major architectural upgrade. (PENDING)
-2.  **User**: Finalize NovaTok Music with deep integration (artwork, rewards, etc.). (SUPERSEDED)
-3.  **User**: Refactor the footer to be more compact. (COMPLETED)
-4.  **User**: Build a site-wide footer. (COMPLETED)
-5.  **User**: Awaiting photorealistic image upload for SoulMate. (ADDRESSED - infrastructure is ready)
-6.  **User**: Implement infrastructure for local photorealistic photos. (COMPLETED)
-7.  **User**: Decided to use Lorelei DiceBear avatars for SoulMate. (COMPLETED, but then superseded)
-8.  **User**: Asked for a decision on synthetic avatar source. (ADDRESSED)
-9.  **User**: Improve SoulMate realism with more data and UI polish. (COMPLETED)
-10. **User**: Build a SoulMate demo dataset with 5,000 profiles. (COMPLETED)
+1.  **User**: Proceed with Phase 2 continued: AI Video Generation. (IN PROGRESS)
+2.  **User**: Add i18n with 8 languages for key UI components. (COMPLETED)
+3.  **User**: Wire Reels to accept AI Studio uploads using the  store. (COMPLETED)
+4.  **User**: Make AI Studio storage and sharing cross-platform compatible. (COMPLETED)
+5.  **User**: Confirmed the Replicate token is server-side only. (COMPLETED)
+6.  **User**: Chose Replicate for AI generation and specified the proxy approach. (ADDRESSED)
+7.  **User**: Proceed with Phase 2: AI Studio (Image Generation). (COMPLETED)
+8.  **User**: Gave strict constraints for the Phase 1 refactor (incremental approach). (ADDRESSED)
+9.  **User**: (Initial message) Start Phase 1 architectural upgrade. (COMPLETED under new constraints)
+10. **(pending)** No pending user messages. The agent is executing the last request.
 
 **Project Health Check:**
--   **Broken**: None.
--   **Mocked**: Almost all features rely on client-side mock data, , or data generators. This includes Social Feed, Go Live, SoulMate, Music, and core content pages. This is the intended demo mode behavior.
+- **Broken**: None.
+- **Mocked**: AI Studio is fully implemented but requires a  to be functional. Without the key, it operates in a mocked/disabled state. Most other original features (Social Feed, Go Live, etc.) remain in their demo mode state, relying on client-side data.
 
 **3rd Party Integrations**
--   **@supabase/supabase-js**: For Auth, DB, and Storage. Requires User-provided API Keys.
--   **LiveKit**: For real-time video. Requires User-provided API Keys.
+- **@supabase/supabase-js**: For Auth, DB, and Storage. Requires User-provided API Keys.
+- **LiveKit**: For real-time video. Requires User-provided API Keys.
+- **Replicate**: For AI image and video generation. Requires a User-provided  key.
 
 **Testing status**
--   Testing agent used after significant changes: NO (Agent used  for manual verification).
--   Troubleshoot agent used after agent stuck in loop: NO
--   Test files created: None.
--   Known regressions: None.
+  - Testing agent used after significant changes: NO (Agent used  extensively for manual visual verification).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None.
+  - Known regressions: None.
 
 **Credentials to test flow:**
--   No credentials are required. The application runs in a full-featured demo mode by default.
+- No credentials are required for the base application to run in demo mode.
+- To test the AI Studio features, a  must be added to a  file in the  directory. Example: 
 
 **What agent forgot to execute**
--   The agent was about to begin the deep integration of the Music feature but was interrupted by the user with a new, higher-priority task to refactor the entire application architecture. The agent correctly pivoted to the new task.
+The agent has been diligent in following the user's phased instructions and has not forgotten or overlooked any requested tasks in this session.
 
 </analysis>
