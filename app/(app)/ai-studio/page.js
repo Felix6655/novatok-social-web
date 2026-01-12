@@ -142,7 +142,7 @@ export default function AIStudioPage() {
       await refreshHistory()
       setResult(record)
       
-      toast({ type: 'success', message: 'Image generated!' })
+      toast({ type: 'success', message: t('aiStudio.imageGenerated') })
     } catch (err) {
       console.error('[AI Studio] Generation error:', err)
       setError(err)
