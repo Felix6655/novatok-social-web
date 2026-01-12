@@ -1953,26 +1953,47 @@ export default function ReelsPage() {
         return
       }
       
-      // Only process AI images for now
-      if (pending.type !== 'ai_image') {
+      // Handle both AI images and videos
+      if (pending.type !== 'ai_image' && pending.type !== 'ai_video') {
         console.warn('[Reels] Unknown pending post type:', pending.type)
         return
       }
       
-      // Create AI reel entry
-      const newAiReel = {
-        id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: 'ai_image',
-        isAiImage: true,
-        title: 'AI Generated',
-        summary: pending.prompt || 'AI-generated image',
-        imageUrl: pending.url,
-        metadata: {
-          prompt: pending.prompt,
-          caption: pending.caption || '',
-          source: pending.metadata?.source || 'ai-studio',
-        },
-        createdAt: new Date(pending.timestamp || Date.now()).toISOString(),
+      // Create AI reel entry based on type
+      let newAiReel
+      
+      if (pending.type === 'ai_image') {
+        newAiReel = {
+          id: `ai_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'ai_image',
+          isAiImage: true,
+          isAiVideo: false,
+          title: 'AI Generated Image',
+          summary: pending.prompt || 'AI-generated image',
+          imageUrl: pending.url,
+          metadata: {
+            prompt: pending.prompt,
+            caption: pending.caption || '',
+            source: pending.metadata?.source || 'ai-studio',
+          },
+          createdAt: new Date(pending.createdAt || pending.timestamp || Date.now()).toISOString(),
+        }
+      } else if (pending.type === 'ai_video') {
+        newAiReel = {
+          id: `ai_vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'ai_video',
+          isAiImage: false,
+          isAiVideo: true,
+          title: 'AI Generated Video',
+          summary: pending.prompt || 'AI-generated video',
+          videoUrl: pending.url,
+          metadata: {
+            prompt: pending.prompt,
+            caption: pending.caption || '',
+            source: pending.metadata?.source || 'ai-studio',
+          },
+          createdAt: new Date(pending.createdAt || pending.timestamp || Date.now()).toISOString(),
+        }
       }
       
       // Load existing AI reels and prepend new one
@@ -1986,14 +2007,18 @@ export default function ReelsPage() {
       // Update combined reels
       setReels(prev => {
         // Remove old AI reels and prepend new ones
-        const nonAiReels = prev.filter(r => !r.isAiImage)
+        const nonAiReels = prev.filter(r => !r.isAiImage && !r.isAiVideo)
         return [...updatedAiReels, ...nonAiReels]
       })
       
       // Show toast if came from AI Studio
       const uploadParam = searchParams?.get('upload')
       if (uploadParam === 'ai') {
-        toast({ type: 'success', message: '🎨 AI image added to Reels!' })
+        if (pending.type === 'ai_video') {
+          toast({ type: 'success', message: '🎬 AI video added to Reels!' })
+        } else {
+          toast({ type: 'success', message: '🎨 AI image added to Reels!' })
+        }
       }
       
       // Go to top to show the new reel
