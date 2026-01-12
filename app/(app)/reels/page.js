@@ -1938,7 +1938,7 @@ export default function ReelsPage() {
     }
   }, [loadAiReels])
 
-  // Process pending post from AI Studio
+  // Process pending post from AI Studio or Go Live
   const processPendingPost = useCallback(async () => {
     if (pendingPostProcessed) return
     
@@ -1953,21 +1953,23 @@ export default function ReelsPage() {
         return
       }
       
-      // Handle both AI images and videos
-      if (pending.type !== 'ai_image' && pending.type !== 'ai_video') {
+      // Handle AI images, AI videos, and user videos
+      const validTypes = ['ai_image', 'ai_video', 'user_video']
+      if (!validTypes.includes(pending.type)) {
         console.warn('[Reels] Unknown pending post type:', pending.type)
         return
       }
       
-      // Create AI reel entry based on type
-      let newAiReel
+      // Create reel entry based on type
+      let newReel
       
       if (pending.type === 'ai_image') {
-        newAiReel = {
+        newReel = {
           id: `ai_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'ai_image',
           isAiImage: true,
           isAiVideo: false,
+          isUserVideo: false,
           title: 'AI Generated Image',
           summary: pending.prompt || 'AI-generated image',
           imageUrl: pending.url,
@@ -1979,11 +1981,12 @@ export default function ReelsPage() {
           createdAt: new Date(pending.createdAt || pending.timestamp || Date.now()).toISOString(),
         }
       } else if (pending.type === 'ai_video') {
-        newAiReel = {
+        newReel = {
           id: `ai_vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'ai_video',
           isAiImage: false,
           isAiVideo: true,
+          isUserVideo: false,
           title: 'AI Generated Video',
           summary: pending.prompt || 'AI-generated video',
           videoUrl: pending.url,
@@ -1994,11 +1997,28 @@ export default function ReelsPage() {
           },
           createdAt: new Date(pending.createdAt || pending.timestamp || Date.now()).toISOString(),
         }
+      } else if (pending.type === 'user_video') {
+        newReel = {
+          id: `uv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'user_video',
+          isAiImage: false,
+          isAiVideo: false,
+          isUserVideo: true,
+          title: 'My Video',
+          summary: pending.caption || 'Recorded video',
+          videoUrl: pending.url,
+          metadata: {
+            caption: pending.caption || '',
+            duration: pending.duration || 0,
+            source: pending.metadata?.source || 'go-live-lite',
+          },
+          createdAt: new Date(pending.createdAt || Date.now()).toISOString(),
+        }
       }
       
       // Load existing AI reels and prepend new one
       const existingAiReels = await loadAiReels()
-      const updatedAiReels = [newAiReel, ...existingAiReels].slice(0, 50) // Keep max 50
+      const updatedAiReels = [newReel, ...existingAiReels].slice(0, 50) // Keep max 50
       
       // Save to storage
       await saveAiReels(updatedAiReels)
@@ -2006,12 +2026,12 @@ export default function ReelsPage() {
       
       // Update combined reels
       setReels(prev => {
-        // Remove old AI reels and prepend new ones
-        const nonAiReels = prev.filter(r => !r.isAiImage && !r.isAiVideo)
-        return [...updatedAiReels, ...nonAiReels]
+        // Remove old generated reels and prepend new ones
+        const otherReels = prev.filter(r => !r.isAiImage && !r.isAiVideo && !r.isUserVideo)
+        return [...updatedAiReels, ...otherReels]
       })
       
-      // Show toast if came from AI Studio
+      // Show toast based on source
       const uploadParam = searchParams?.get('upload')
       if (uploadParam === 'ai') {
         if (pending.type === 'ai_video') {
@@ -2019,6 +2039,8 @@ export default function ReelsPage() {
         } else {
           toast({ type: 'success', message: '🎨 AI image added to Reels!' })
         }
+      } else if (uploadParam === 'video') {
+        toast({ type: 'success', message: '🎥 Video added to Reels!' })
       }
       
       // Go to top to show the new reel
