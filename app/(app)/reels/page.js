@@ -1982,7 +1982,15 @@ export default function ReelsPage() {
                 className="h-full w-full snap-start snap-always"
                 style={{ scrollSnapAlign: 'start' }}
               >
-                {reel.isVideo ? (
+                {reel.isAiImage ? (
+                  <AiImageReelCard
+                    reel={reel}
+                    isActive={index === currentIndex}
+                    onSaveToggle={handleSaveToggle}
+                    onReact={handleReaction}
+                    onDelete={handleDeleteAiReel}
+                  />
+                ) : reel.isVideo ? (
                   <VideoReelCard
                     reel={reel}
                     isActive={index === currentIndex}
