@@ -82,6 +82,15 @@ const AI_VIDEO_CONFIG = {
   emoji: '🎬'
 }
 
+// User Video reel config
+const USER_VIDEO_CONFIG = {
+  gradient: 'from-orange-600/80 via-red-600/60 to-pink-700/80',
+  accentColor: 'text-orange-400',
+  bgAccent: 'bg-orange-500/20',
+  borderAccent: 'border-orange-500/40',
+  emoji: '🎥'
+}
+
 // Quick action buttons for empty state
 const QUICK_ACTIONS = [
   { id: 'think', label: 'Think', href: '/think', icon: Lightbulb, color: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/30', iconColor: 'text-yellow-400' },
