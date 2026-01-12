@@ -59,6 +59,23 @@
     "postToReels": "Post to Reels",
     "readyToCreate": "Ready to create",
     "readyToCreateDesc": "Enter a prompt above and click Generate to create AI art.",
+    "videoGenerating": "Generating video...",
+    "videoProgress": "Progress: {{progress}}%",
+    "videoGenerated": "Video generated!",
+    "videoFailed": "Video generation failed",
+    "generateVideo": "Generate Video",
+    "aspectRatio": "Aspect Ratio",
+    "duration": "Duration",
+    "seconds": "seconds",
+    "videoReadyToCreate": "Ready to create video",
+    "videoReadyToCreateDesc": "Enter a prompt and click Generate to create AI video.",
+    "aspectRatios": {
+      "16:9": "Landscape (16:9)",
+      "9:16": "Portrait (9:16)",
+      "1:1": "Square (1:1)",
+      "4:3": "Standard (4:3)",
+      "3:4": "Vertical (3:4)"
+    },
     "styles": {
       "none": "None",
       "photorealistic": "Photorealistic",
