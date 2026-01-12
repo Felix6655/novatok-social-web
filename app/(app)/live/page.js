@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { 
   Video, VideoOff, Mic, MicOff, RefreshCw, Camera, AlertCircle, 
-  Square, Play, Check, X, Upload, RotateCcw, Clock
+  Square, Play, Check, X, Upload, RotateCcw, Clock, Loader2
 } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
-import { postVideoToReels, storeBlobUrl } from '@/src/services/userVideos'
+import { postVideoToReels } from '@/src/services/userVideos'
+import { uploadVideoBlob, checkUploadStatus } from '@/src/services/videoUpload'
 
 const MAX_RECORDING_SECONDS = 15
 
@@ -24,6 +25,7 @@ export default function GoLiveLitePage() {
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
+  const recordedBlobRef = useRef(null)
   
   // State
   const [mounted, setMounted] = useState(false)
@@ -33,13 +35,18 @@ export default function GoLiveLitePage() {
   const [videoDevices, setVideoDevices] = useState([])
   const [currentDeviceIndex, setCurrentDeviceIndex] = useState(0)
   const [canSwitchCamera, setCanSwitchCamera] = useState(false)
+  const [isUploadConfigured, setIsUploadConfigured] = useState(null)
   
   // Recording state
   const [recordingState, setRecordingState] = useState('idle') // idle, recording, recorded
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordedBlobUrl, setRecordedBlobUrl] = useState(null)
   const [caption, setCaption] = useState('')
-  const [isPosting, setIsPosting] = useState(false)
+  
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState(null)
 
   // Cleanup function
   const stopAllTracks = useCallback(() => {
@@ -61,11 +68,21 @@ export default function GoLiveLitePage() {
 
   useEffect(() => {
     setMounted(true)
+    
+    // Check if upload is configured
+    checkUploadStatus().then(status => {
+      setIsUploadConfigured(status.configured)
+    })
+    
     return () => {
       stopAllTracks()
       cleanupTimer()
+      // Cleanup blob URL
+      if (recordedBlobUrl) {
+        URL.revokeObjectURL(recordedBlobUrl)
+      }
     }
-  }, [stopAllTracks, cleanupTimer])
+  }, [stopAllTracks, cleanupTimer, recordedBlobUrl])
 
   // Get video devices
   const getVideoDevices = useCallback(async () => {
@@ -163,8 +180,10 @@ export default function GoLiveLitePage() {
     if (!streamRef.current) return
     
     chunksRef.current = []
+    recordedBlobRef.current = null
     setRecordingTime(0)
     setRecordedBlobUrl(null)
+    setUploadError(null)
     
     try {
       const options = { mimeType: 'video/webm;codecs=vp9,opus' }
@@ -181,7 +200,8 @@ export default function GoLiveLitePage() {
       
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-        const url = storeBlobUrl(blob)
+        recordedBlobRef.current = blob
+        const url = URL.createObjectURL(blob)
         setRecordedBlobUrl(url)
         setRecordingState('recorded')
         cleanupTimer()
@@ -221,31 +241,61 @@ export default function GoLiveLitePage() {
     if (recordedBlobUrl) {
       URL.revokeObjectURL(recordedBlobUrl)
     }
+    recordedBlobRef.current = null
     setRecordedBlobUrl(null)
     setRecordingState('idle')
     setRecordingTime(0)
     setCaption('')
+    setUploadError(null)
+    setUploadProgress(0)
   }, [recordedBlobUrl])
 
-  // Post to Reels
+  // Post to Reels (with upload)
   const handlePostToReels = useCallback(async () => {
-    if (!recordedBlobUrl) return
+    const blob = recordedBlobRef.current
+    if (!blob) {
+      toast({ type: 'error', message: t('goLive.noVideoToPost') })
+      return
+    }
     
-    setIsPosting(true)
+    setIsUploading(true)
+    setUploadProgress(0)
+    setUploadError(null)
+    
     try {
+      // Upload video to storage
+      toast({ type: 'info', message: t('goLive.uploadingVideo') })
+      
+      const uploadResult = await uploadVideoBlob(blob, (progress) => {
+        setUploadProgress(progress)
+      })
+      
+      if (!uploadResult.ok) {
+        const errorMessage = uploadResult.error?.message || t('goLive.uploadFailed')
+        setUploadError(errorMessage)
+        toast({ type: 'error', message: errorMessage })
+        setIsUploading(false)
+        return
+      }
+      
+      // Post to Reels with persistent URL
       await postVideoToReels({
-        blobUrl: recordedBlobUrl,
+        videoUrl: uploadResult.url,
         caption: caption.trim(),
         duration: recordingTime,
       })
+      
       toast({ type: 'success', message: t('goLive.postingToReels') })
       router.push('/reels?upload=video')
+      
     } catch (error) {
       console.error('Post to Reels error:', error)
-      toast({ type: 'error', message: t('goLive.postFailed') })
-      setIsPosting(false)
+      const errorMessage = error.message || t('goLive.postFailed')
+      setUploadError(errorMessage)
+      toast({ type: 'error', message: errorMessage })
+      setIsUploading(false)
     }
-  }, [recordedBlobUrl, caption, recordingTime, router, toast, t])
+  }, [caption, recordingTime, router, toast, t])
 
   // Format time display
   const formatTime = (seconds) => {
@@ -299,6 +349,19 @@ export default function GoLiveLitePage() {
           </div>
         )}
       </div>
+
+      {/* Storage Warning */}
+      {isUploadConfigured === false && permissionState === 'granted' && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-amber-400 font-medium text-sm">{t('goLive.storageNotConfigured')}</p>
+              <p className="text-amber-400/70 text-xs mt-1">{t('goLive.storageNotConfiguredDesc')}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Permission Request State */}
       {permissionState === 'idle' && (
@@ -439,6 +502,23 @@ export default function GoLiveLitePage() {
                   />
                 </div>
               )}
+              
+              {/* Upload Progress Overlay */}
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                  <div className="text-center">
+                    <Loader2 className="w-12 h-12 text-pink-400 animate-spin mx-auto mb-4" />
+                    <p className="text-white font-medium mb-2">{t('goLive.uploadingVideo')}</p>
+                    <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto">
+                      <div 
+                        className="h-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-400 mt-2">{uploadProgress}%</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Controls */}
@@ -493,7 +573,7 @@ export default function GoLiveLitePage() {
                 </div>
               )}
               
-              {recordingState === 'recorded' && (
+              {recordingState === 'recorded' && !isUploading && (
                 <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={recordAgain}
@@ -527,6 +607,16 @@ export default function GoLiveLitePage() {
           {/* Caption & Post Section */}
           {recordingState === 'recorded' && (
             <div className="bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 p-5 space-y-4">
+              {/* Upload Error */}
+              {uploadError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    <p className="text-sm text-red-400">{uploadError}</p>
+                  </div>
+                </div>
+              )}
+              
               <div>
                 <label className="text-sm font-medium text-gray-400 mb-2 block">
                   {t('goLive.captionLabel')}
@@ -537,7 +627,8 @@ export default function GoLiveLitePage() {
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder={t('goLive.captionPlaceholder')}
                   maxLength={200}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50"
+                  disabled={isUploading}
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 disabled:opacity-50"
                 />
                 <p className="text-xs text-gray-600 text-right mt-1">{caption.length}/200</p>
               </div>
@@ -551,13 +642,13 @@ export default function GoLiveLitePage() {
               
               <button
                 onClick={handlePostToReels}
-                disabled={isPosting}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold flex items-center justify-center gap-3 hover:from-pink-500 hover:to-purple-500 transition-all disabled:opacity-50"
+                disabled={isUploading || !isUploadConfigured}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold flex items-center justify-center gap-3 hover:from-pink-500 hover:to-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isPosting ? (
+                {isUploading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {t('goLive.posting')}
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {t('goLive.uploading')} {uploadProgress}%
                   </>
                 ) : (
                   <>
@@ -566,6 +657,12 @@ export default function GoLiveLitePage() {
                   </>
                 )}
               </button>
+              
+              {!isUploadConfigured && (
+                <p className="text-xs text-amber-400 text-center">
+                  {t('goLive.storageRequiredToPost')}
+                </p>
+              )}
             </div>
           )}
 
