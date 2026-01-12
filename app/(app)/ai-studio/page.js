@@ -106,7 +106,7 @@ export default function AIStudioPage() {
   // Generate image
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
-      toast({ type: 'error', message: 'Please enter a prompt' })
+      toast({ type: 'error', message: t('aiStudio.promptRequired') })
       return
     }
     
@@ -160,7 +160,7 @@ export default function AIStudioPage() {
       })
       await refreshHistory()
       
-      toast({ type: 'error', message: err.message || 'Failed to generate image' })
+      toast({ type: 'error', message: err.message || t('aiStudio.generationFailed') })
     } finally {
       setIsGenerating(false)
     }
@@ -173,12 +173,12 @@ export default function AIStudioPage() {
     try {
       const { success } = await downloadImage(result.resultUrl, `novatok-ai-${result.id}`)
       if (success) {
-        toast({ type: 'success', message: 'Download started!' })
+        toast({ type: 'success', message: t('aiStudio.downloadStarted') })
       } else {
-        toast({ type: 'error', message: 'Download failed' })
+        toast({ type: 'error', message: t('aiStudio.downloadFailed') })
       }
     } catch (err) {
-      toast({ type: 'error', message: 'Failed to download' })
+      toast({ type: 'error', message: t('aiStudio.downloadFailed') })
     }
   }, [result, toast])
 
@@ -190,13 +190,13 @@ export default function AIStudioPage() {
       const { success, method } = await shareImage(result.resultUrl, 'Check out my AI creation!')
       if (success) {
         if (method === 'clipboard') {
-          toast({ type: 'success', message: 'Image URL copied!' })
+          toast({ type: 'success', message: t('aiStudio.urlCopied') })
         } else {
-          toast({ type: 'success', message: 'Shared!' })
+          toast({ type: 'success', message: t('aiStudio.shared') })
         }
       }
     } catch (err) {
-      toast({ type: 'error', message: 'Failed to share' })
+      toast({ type: 'error', message: t('aiStudio.shareFailed') })
     }
   }, [result, toast])
 
@@ -209,7 +209,7 @@ export default function AIStudioPage() {
         setTimeout(() => setCopiedId(null), 2000)
       }
     } catch (err) {
-      toast({ type: 'error', message: 'Failed to copy' })
+      toast({ type: 'error', message: t('aiStudio.shareFailed') })
     }
   }, [toast])
 
@@ -232,7 +232,7 @@ export default function AIStudioPage() {
     if (result?.id === id) {
       setResult(null)
     }
-    toast({ type: 'success', message: 'Deleted' })
+    toast({ type: 'success', message: t('aiStudio.deleted') })
   }, [result, toast, refreshHistory])
 
   // Post to Reels (cross-platform using pendingPost store)
@@ -245,12 +245,12 @@ export default function AIStudioPage() {
         prompt: result.prompt,
       })
       
-      toast({ type: 'success', message: 'Opening Reels...' })
+      toast({ type: 'success', message: t('aiStudio.openingReels') })
       
       // Navigate to Reels
       window.location.href = '/reels?upload=ai'
     } catch (err) {
-      toast({ type: 'error', message: 'Failed to prepare post' })
+      toast({ type: 'error', message: t('aiStudio.preparePostFailed') })
     }
   }, [result, toast])
 
