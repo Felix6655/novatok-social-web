@@ -403,6 +403,7 @@ export default function AppLayout({ children }) {
   }
 
   return (
+    <I18nProvider>
     <ToastProvider>
       {/* Premium Constellation Background - behind all content */}
       <ConstellationBackground />
