@@ -21,62 +21,62 @@ import { LanguageSwitcher } from '@/src/components/LanguageSwitcher'
 // Import i18n to ensure it's initialized
 import '@/src/i18n'
 
-// Sidebar navigation structure
+// Sidebar navigation structure - uses i18n keys
 const sidebarSections = [
   {
     id: 'core',
-    label: 'Core',
+    labelKey: 'nav.core',
     collapsible: false,
     items: [
-      { href: '/home', label: 'Home', icon: Home },
-      { href: '/reels', label: 'Reels', icon: Play },
-      { href: '/rooms', label: 'Rooms', icon: Layout },
-      { href: '/music', label: 'NovaTok Music', icon: Music },
-      { href: '/think', label: 'Think', icon: Lightbulb },
-      { href: '/thinking', label: 'Thinking', icon: Brain },
-      { href: '/soulmate', label: 'SoulMate', icon: Heart },
-      { href: '/messages', label: 'Messages', icon: MessageCircle },
-      { href: '/notifications', label: 'Notifications', icon: Bell },
+      { href: '/home', labelKey: 'nav.home', icon: Home },
+      { href: '/reels', labelKey: 'nav.reels', icon: Play },
+      { href: '/rooms', labelKey: 'nav.rooms', icon: Layout },
+      { href: '/music', labelKey: 'nav.music', icon: Music },
+      { href: '/think', labelKey: 'nav.think', icon: Lightbulb },
+      { href: '/thinking', labelKey: 'nav.thinking', icon: Brain },
+      { href: '/soulmate', labelKey: 'nav.soulmate', icon: Heart },
+      { href: '/messages', labelKey: 'nav.messages', icon: MessageCircle },
+      { href: '/notifications', labelKey: 'nav.notifications', icon: Bell },
     ]
   },
   {
     id: 'create',
-    label: 'Create & AI',
+    labelKey: 'nav.createAi',
     collapsible: true,
     items: [
-      { href: '/ai-studio', label: 'AI Studio', icon: Wand2 },
-      { href: '/live', label: 'Go Live', icon: Video },
-      { href: '/tarot', label: 'Tarot / AI Psychic', icon: Sparkles },
-      { href: '/horoscope', label: 'Horoscope', icon: Star },
-      { href: '/ai', label: 'Chat with AIs', icon: MessageSquare },
+      { href: '/ai-studio', labelKey: 'nav.aiStudio', icon: Wand2 },
+      { href: '/live', labelKey: 'nav.goLive', icon: Video },
+      { href: '/tarot', labelKey: 'nav.tarot', icon: Sparkles },
+      { href: '/horoscope', labelKey: 'nav.horoscope', icon: Star },
+      { href: '/ai', labelKey: 'nav.chatWithAis', icon: MessageSquare },
     ]
   },
   {
     id: 'tools',
-    label: 'Tools',
+    labelKey: 'Tools',  // Not in translations yet - keep as is
     collapsible: true,
     items: [
-      { href: '/savebot', label: 'SaveBot', icon: Bot },
-      { href: '/reminders', label: 'Reminders', icon: AlarmClock },
-      { href: '/memories', label: 'Memories', icon: Image },
-      { href: '/saved', label: 'Saved', icon: Bookmark },
+      { href: '/savebot', labelKey: 'SaveBot', icon: Bot },
+      { href: '/reminders', labelKey: 'Reminders', icon: AlarmClock },
+      { href: '/memories', labelKey: 'Memories', icon: Image },
+      { href: '/saved', labelKey: 'Saved', icon: Bookmark },
     ]
   },
   {
     id: 'community',
-    label: 'Community',
+    labelKey: 'Community',  // Not in translations yet - keep as is
     collapsible: true,
     items: [
-      { href: '/groups', label: 'Groups', icon: Users },
-      { href: '/events', label: 'Events', icon: CalendarDays },
+      { href: '/groups', labelKey: 'Groups', icon: Users },
+      { href: '/events', labelKey: 'Events', icon: CalendarDays },
     ]
   },
 ]
 
 // Account section items
 const accountItems = [
-  { href: '/profile', label: 'Profile', icon: User },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/profile', labelKey: 'nav.profile', icon: User },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 
 // Mobile nav shows fewer items (unchanged)
