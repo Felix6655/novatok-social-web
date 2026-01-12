@@ -33,14 +33,15 @@ export function useLocalStorage(key, initialValue) {
   // Track if mounted (for SSR)
   const [isMounted, setIsMounted] = useState(false)
 
+  // Note: SSR hydration pattern - intentionally setting state on mount
   useEffect(() => {
-    setIsMounted(true)
+    setIsMounted(true) // eslint-disable-line react-hooks/set-state-in-effect
     
     // Re-read from localStorage on mount (handles SSR hydration)
     try {
       const item = window.localStorage.getItem(key)
       if (item) {
-        setStoredValue(JSON.parse(item))
+        setStoredValue(JSON.parse(item)) // eslint-disable-line react-hooks/set-state-in-effect
       }
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}" on mount:`, error)

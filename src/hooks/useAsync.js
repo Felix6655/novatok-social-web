@@ -97,9 +97,10 @@ export function useAsync(asyncFn, options = {}) {
   }, [])
 
   // Auto-execute on mount if immediate is true
+  // Note: This is intentional - we only want to run once on mount
   useEffect(() => {
     if (immediate) {
-      execute()
+      execute() // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
