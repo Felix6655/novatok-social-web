@@ -2,42 +2,55 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
-  Bot, MessageSquare, Sparkles, Zap, Send, Loader2, Plus, Trash2,
-  ChevronLeft, User, AlertCircle, History, X, RefreshCw
+  Bot, Sparkles, Zap, Send, Loader2, Plus, Trash2,
+  User, AlertCircle, RefreshCw, Palette, Target, BookOpen
 } from 'lucide-react'
 import { useToast } from '@/components/ui/ToastProvider'
+import { useTranslation } from 'react-i18next'
 import {
   checkChatStatus,
-  sendMessage,
-  createConversation,
-  getConversations,
-  getConversation,
-  addMessageToConversation,
-  deleteConversation,
-  formatConversationDate,
-  getConversationPreview,
+  sendChatMessage,
+  loadConversation,
+  saveConversation,
+  clearConversation,
+  validateMessageInput,
 } from '@/src/services/aiChat'
 
-// AI Personalities
-const PERSONALITIES = [
-  { id: 'assistant', name: 'Nova', icon: Bot, color: 'cyan', desc: 'Helpful Assistant' },
-  { id: 'creative', name: 'Muse', icon: Sparkles, color: 'pink', desc: 'Creative Partner' },
-  { id: 'coach', name: 'Sage', icon: User, color: 'green', desc: 'Life Coach' },
-  { id: 'expert', name: 'Atlas', icon: Zap, color: 'amber', desc: 'Knowledge Expert' },
+// Persona definitions with icons
+const PERSONAS = [
+  { id: 'creative', icon: Palette, color: 'pink' },
+  { id: 'coach', icon: Target, color: 'green' },
+  { id: 'expert', icon: BookOpen, color: 'amber' },
 ]
 
 const colorClasses = {
-  cyan: { bg: 'bg-cyan-500/20', border: 'border-cyan-500/30', text: 'text-cyan-400', gradient: 'from-cyan-500/20 to-blue-500/20' },
-  pink: { bg: 'bg-pink-500/20', border: 'border-pink-500/30', text: 'text-pink-400', gradient: 'from-pink-500/20 to-rose-500/20' },
-  green: { bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', gradient: 'from-green-500/20 to-emerald-500/20' },
-  amber: { bg: 'bg-amber-500/20', border: 'border-amber-500/30', text: 'text-amber-400', gradient: 'from-amber-500/20 to-orange-500/20' },
+  pink: { 
+    bg: 'bg-pink-500/20', 
+    border: 'border-pink-500/30', 
+    text: 'text-pink-400', 
+    gradient: 'from-pink-500/20 to-rose-500/20',
+    button: 'from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500',
+  },
+  green: { 
+    bg: 'bg-green-500/20', 
+    border: 'border-green-500/30', 
+    text: 'text-green-400', 
+    gradient: 'from-green-500/20 to-emerald-500/20',
+    button: 'from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500',
+  },
+  amber: { 
+    bg: 'bg-amber-500/20', 
+    border: 'border-amber-500/30', 
+    text: 'text-amber-400', 
+    gradient: 'from-amber-500/20 to-orange-500/20',
+    button: 'from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500',
+  },
 }
 
 // Message Bubble Component
-function MessageBubble({ message, personality }) {
+function MessageBubble({ message, persona, colors, t }) {
   const isUser = message.role === 'user'
-  const colors = colorClasses[personality?.color || 'cyan']
-  const Icon = personality?.icon || Bot
+  const Icon = PERSONAS.find(p => p.id === persona)?.icon || Bot
   
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -55,7 +68,7 @@ function MessageBubble({ message, personality }) {
           ? 'bg-purple-500/20 border border-purple-500/30 rounded-tr-md' 
           : 'bg-gray-800/80 border border-gray-700/50 rounded-tl-md'
       }`}>
-        <p className="text-gray-200 text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-gray-200 text-sm whitespace-pre-wrap break-words">{message.content}</p>
         {message.timestamp && (
           <p className="text-xs text-gray-500 mt-1">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -67,9 +80,10 @@ function MessageBubble({ message, personality }) {
 }
 
 // Empty Chat State
-function EmptyChatState({ personality, onStartChat }) {
-  const colors = colorClasses[personality?.color || 'cyan']
-  const Icon = personality?.icon || Bot
+function EmptyChatState({ persona, colors, t }) {
+  const Icon = PERSONAS.find(p => p.id === persona)?.icon || Bot
+  const personaName = t(`aiChat.personas.${persona}.name`)
+  const personaFullDesc = t(`aiChat.personas.${persona}.fullDesc`)
   
   return (
     <div className="flex-1 flex items-center justify-center p-6">
@@ -77,65 +91,101 @@ function EmptyChatState({ personality, onStartChat }) {
         <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${colors.gradient} flex items-center justify-center mx-auto mb-4 border ${colors.border}`}>
           <Icon className={`w-10 h-10 ${colors.text}`} />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">Chat with {personality?.name || 'AI'}</h3>
-        <p className="text-gray-400 text-sm mb-6">
-          {personality?.desc || 'Start a conversation'}
-        </p>
-        <p className="text-gray-500 text-xs">
-          Type a message below to start chatting
-        </p>
+        <h3 className="text-xl font-bold text-white mb-2">{personaName}</h3>
+        <p className="text-gray-400 text-sm mb-4">{personaFullDesc}</p>
+        <p className="text-gray-500 text-xs">{t('aiChat.emptyChatDesc')}</p>
       </div>
     </div>
   )
 }
 
-// Service Not Configured State
-function NotConfiguredState() {
+// Not Configured State
+function NotConfiguredState({ t }) {
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="text-center max-w-sm">
         <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
           <AlertCircle className="w-8 h-8 text-amber-400" />
         </div>
-        <h3 className="text-lg font-bold text-white mb-2">AI Service Not Configured</h3>
+        <h3 className="text-lg font-bold text-white mb-2">{t('aiChat.notConfigured')}</h3>
         <p className="text-gray-400 text-sm">
-          Set <code className="px-1.5 py-0.5 bg-gray-800 rounded text-amber-400">EMERGENT_API_KEY</code> or <code className="px-1.5 py-0.5 bg-gray-800 rounded text-amber-400">OPENAI_API_KEY</code> to enable AI chat.
+          {t('aiChat.notConfiguredDesc')}
         </p>
       </div>
     </div>
   )
 }
 
-export default function AIPage() {
+// Error State
+function ErrorState({ error, onRetry, t }) {
+  return (
+    <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+      <div className="flex-1">
+        <p className="text-red-400 text-sm font-medium">{t('aiChat.errorOccurred')}</p>
+        <p className="text-red-400/70 text-xs">{error}</p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30 transition-colors flex items-center gap-1"
+      >
+        <RefreshCw className="w-3.5 h-3.5" />
+        {t('aiChat.errorRetry')}
+      </button>
+    </div>
+  )
+}
+
+// Typing Indicator
+function TypingIndicator({ colors }) {
+  return (
+    <div className="flex gap-3">
+      <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${colors.bg} ${colors.border} border`}>
+        <Loader2 className={`w-4 h-4 ${colors.text} animate-spin`} />
+      </div>
+      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-gray-800/80 border border-gray-700/50">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function AIChatPage() {
   const { toast } = useToast()
+  const { t, i18n } = useTranslation()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   
+  // State
   const [mounted, setMounted] = useState(false)
   const [isConfigured, setIsConfigured] = useState(null)
-  const [conversations, setConversations] = useState([])
-  const [currentConversation, setCurrentConversation] = useState(null)
-  const [selectedPersonality, setSelectedPersonality] = useState(PERSONALITIES[0])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedPersona, setSelectedPersona] = useState(null)
+  const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
+  const [error, setError] = useState(null)
+  const [charCount, setCharCount] = useState(0)
   
-  // Check service status and load conversations
+  // Get current colors
+  const currentColors = selectedPersona 
+    ? colorClasses[PERSONAS.find(p => p.id === selectedPersona)?.color || 'pink']
+    : colorClasses.pink
+
+  // Initialize
   useEffect(() => {
     setMounted(true)
     
     async function init() {
-      setIsLoading(true)
       try {
-        const [status, convs] = await Promise.all([
-          checkChatStatus(),
-          getConversations(),
-        ])
+        const status = await checkChatStatus()
         setIsConfigured(status.configured)
-        setConversations(convs)
-      } catch (error) {
-        console.error('Failed to initialize:', error)
+      } catch (err) {
+        console.error('Init error:', err)
         setIsConfigured(false)
       } finally {
         setIsLoading(false)
@@ -144,95 +194,155 @@ export default function AIPage() {
     
     init()
   }, [])
-  
-  // Scroll to bottom when messages change
+
+  // Load conversation when persona changes
+  useEffect(() => {
+    if (!selectedPersona) return
+    
+    async function loadChat() {
+      const data = await loadConversation(selectedPersona)
+      if (data && data.messages.length > 0) {
+        setMessages(data.messages)
+      } else {
+        setMessages([])
+      }
+      setError(null)
+      inputRef.current?.focus()
+    }
+    
+    loadChat()
+  }, [selectedPersona])
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [currentConversation?.messages])
-  
-  // Start new conversation
-  const handleNewConversation = useCallback(async (personality = selectedPersonality) => {
-    try {
-      const conv = await createConversation(personality.id, personality.name)
-      setCurrentConversation(conv)
-      setSelectedPersonality(personality)
-      setConversations(prev => [conv, ...prev])
-      setShowHistory(false)
-      inputRef.current?.focus()
-    } catch (error) {
-      toast({ type: 'error', message: 'Failed to create conversation' })
-    }
-  }, [selectedPersonality, toast])
-  
-  // Load existing conversation
-  const handleLoadConversation = useCallback(async (conv) => {
-    const personality = PERSONALITIES.find(p => p.id === conv.personality) || PERSONALITIES[0]
-    setCurrentConversation(conv)
-    setSelectedPersonality(personality)
-    setShowHistory(false)
-  }, [])
-  
-  // Delete conversation
-  const handleDeleteConversation = useCallback(async (id, e) => {
-    e.stopPropagation()
-    try {
-      await deleteConversation(id)
-      setConversations(prev => prev.filter(c => c.id !== id))
-      if (currentConversation?.id === id) {
-        setCurrentConversation(null)
-      }
-      toast({ type: 'success', message: 'Conversation deleted' })
-    } catch (error) {
-      toast({ type: 'error', message: 'Failed to delete' })
-    }
-  }, [currentConversation, toast])
-  
+  }, [messages, isSending])
+
+  // Update char count
+  useEffect(() => {
+    setCharCount(inputValue.length)
+  }, [inputValue])
+
+  // Select persona and start chat
+  const handleSelectPersona = (personaId) => {
+    setSelectedPersona(personaId)
+  }
+
+  // Clear current chat
+  const handleClearChat = async () => {
+    if (!selectedPersona) return
+    
+    await clearConversation(selectedPersona)
+    setMessages([])
+    setError(null)
+    toast({ type: 'success', message: t('aiChat.clearChat') })
+  }
+
   // Send message
   const handleSendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isSending) return
+    if (!selectedPersona || isSending) return
     
-    const userMessage = inputValue.trim()
+    // Validate input
+    const validation = validateMessageInput(inputValue)
+    if (!validation.valid) {
+      toast({ type: 'error', message: validation.error })
+      return
+    }
+    
+    const userContent = inputValue.trim()
     setInputValue('')
+    setCharCount(0)
+    setError(null)
     setIsSending(true)
     
+    // Add user message immediately
+    const userMessage = {
+      role: 'user',
+      content: userContent,
+      timestamp: new Date().toISOString(),
+    }
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
+    
     try {
-      // Create conversation if needed
-      let conv = currentConversation
-      if (!conv) {
-        conv = await createConversation(selectedPersonality.id, selectedPersonality.name)
-        setConversations(prev => [conv, ...prev])
+      // Send to API
+      const response = await sendChatMessage({
+        persona: selectedPersona,
+        messages: updatedMessages,
+        language: i18n.language,
+      })
+      
+      if (!response.ok) {
+        setError(response.error?.message || t('aiChat.errorOccurred'))
+        // Save conversation even with error
+        await saveConversation(selectedPersona, updatedMessages)
+        return
       }
       
-      // Add user message locally first
-      const userMsg = { role: 'user', content: userMessage }
-      conv = await addMessageToConversation(conv.id, userMsg)
-      setCurrentConversation({ ...conv })
+      // Add assistant message
+      const assistantMessage = {
+        ...response.message,
+        timestamp: new Date().toISOString(),
+      }
+      const finalMessages = [...updatedMessages, assistantMessage]
+      setMessages(finalMessages)
       
-      // Send to API
-      const response = await sendMessage({
-        messages: conv.messages.map(m => ({ role: m.role, content: m.content })),
-        personality: selectedPersonality.id,
-      })
+      // Save to storage
+      await saveConversation(selectedPersona, finalMessages)
       
-      // Add AI response
-      const aiMsg = { role: 'assistant', content: response.message }
-      conv = await addMessageToConversation(conv.id, aiMsg)
-      setCurrentConversation({ ...conv })
-      
-      // Update conversations list
-      setConversations(prev => {
-        const filtered = prev.filter(c => c.id !== conv.id)
-        return [conv, ...filtered]
-      })
-      
-    } catch (error) {
-      console.error('Send message error:', error)
-      toast({ type: 'error', message: error.message || 'Failed to send message' })
+    } catch (err) {
+      console.error('Send error:', err)
+      setError(err.message || t('aiChat.errorOccurred'))
+      // Save conversation even with error
+      await saveConversation(selectedPersona, updatedMessages)
     } finally {
       setIsSending(false)
     }
-  }, [inputValue, isSending, currentConversation, selectedPersonality, toast])
-  
+  }, [selectedPersona, inputValue, messages, isSending, i18n.language, toast, t])
+
+  // Retry last message
+  const handleRetry = useCallback(async () => {
+    if (!selectedPersona || messages.length === 0) return
+    
+    // Remove last assistant message if exists and retry
+    const lastMsg = messages[messages.length - 1]
+    let messagesToRetry = messages
+    
+    if (lastMsg.role === 'assistant') {
+      messagesToRetry = messages.slice(0, -1)
+      setMessages(messagesToRetry)
+    }
+    
+    setError(null)
+    setIsSending(true)
+    
+    try {
+      const response = await sendChatMessage({
+        persona: selectedPersona,
+        messages: messagesToRetry,
+        language: i18n.language,
+      })
+      
+      if (!response.ok) {
+        setError(response.error?.message || t('aiChat.errorOccurred'))
+        return
+      }
+      
+      const assistantMessage = {
+        ...response.message,
+        timestamp: new Date().toISOString(),
+      }
+      const finalMessages = [...messagesToRetry, assistantMessage]
+      setMessages(finalMessages)
+      await saveConversation(selectedPersona, finalMessages)
+      
+    } catch (err) {
+      setError(err.message || t('aiChat.errorOccurred'))
+    } finally {
+      setIsSending(false)
+    }
+  }, [selectedPersona, messages, i18n.language, t])
+
   // Handle Enter key
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -240,8 +350,9 @@ export default function AIPage() {
       handleSendMessage()
     }
   }
-  
-  if (!mounted) {
+
+  // Loading state
+  if (!mounted || isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-12 bg-gray-800/50 rounded-xl w-48" />
@@ -249,7 +360,7 @@ export default function AIPage() {
       </div>
     )
   }
-  
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in">
       {/* Header */}
@@ -259,121 +370,68 @@ export default function AIPage() {
             <Bot className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Chat with AIs</h1>
+            <h1 className="text-lg font-semibold text-white">{t('aiChat.title')}</h1>
             <p className="text-sm text-gray-500">
-              {currentConversation ? `Chatting with ${selectedPersonality.name}` : 'AI-powered conversations'}
+              {selectedPersona 
+                ? t('aiChat.chattingWith', { name: t(`aiChat.personas.${selectedPersona}.name`) })
+                : t('aiChat.subtitle')
+              }
             </p>
           </div>
         </div>
+        
+        {/* Actions */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors relative"
-            title="History"
-          >
-            <History className="w-5 h-5 text-gray-400" />
-            {conversations.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-[10px] font-bold text-white flex items-center justify-center">
-                {conversations.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => handleNewConversation()}
-            className="p-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 transition-colors"
-            title="New Chat"
-          >
-            <Plus className="w-5 h-5 text-cyan-400" />
-          </button>
+          {selectedPersona && (
+            <>
+              <button
+                onClick={handleClearChat}
+                className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
+                title={t('aiChat.clearChat')}
+              >
+                <Trash2 className="w-4 h-4 text-gray-400" />
+              </button>
+              <button
+                onClick={() => setSelectedPersona(null)}
+                className="p-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
+                title={t('aiChat.newChat')}
+              >
+                <Plus className="w-4 h-4 text-gray-400" />
+              </button>
+            </>
+          )}
         </div>
       </div>
-      
-      {/* History Sidebar */}
-      {showHistory && (
-        <div className="fixed inset-0 z-50 md:relative md:inset-auto">
-          <div className="absolute inset-0 bg-black/60 md:hidden" onClick={() => setShowHistory(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-80 bg-[hsl(0,0%,7%)] border-l border-gray-800 p-4 overflow-y-auto md:relative md:w-full md:border md:rounded-2xl md:mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white">Conversations</h3>
-              <button onClick={() => setShowHistory(false)} className="md:hidden p-1 text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {conversations.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">No conversations yet</p>
-            ) : (
-              <div className="space-y-2">
-                {conversations.map(conv => {
-                  const personality = PERSONALITIES.find(p => p.id === conv.personality) || PERSONALITIES[0]
-                  const colors = colorClasses[personality.color]
-                  const Icon = personality.icon
-                  
-                  return (
-                    <button
-                      key={conv.id}
-                      onClick={() => handleLoadConversation(conv)}
-                      className={`w-full p-3 rounded-xl text-left transition-colors group ${
-                        currentConversation?.id === conv.id 
-                          ? `${colors.bg} ${colors.border} border` 
-                          : 'bg-gray-800/50 hover:bg-gray-800 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${colors.bg} ${colors.border} border`}>
-                          <Icon className={`w-4 h-4 ${colors.text}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-sm font-medium ${colors.text}`}>{personality.name}</span>
-                            <span className="text-xs text-gray-500">{formatConversationDate(conv.updatedAt)}</span>
-                          </div>
-                          <p className="text-xs text-gray-400 truncate mt-0.5">
-                            {getConversationPreview(conv)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteConversation(conv.id, e)}
-                          className="p-1 rounded text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
+
       {/* Main Chat Area */}
       <div className="flex-1 bg-[hsl(0,0%,7%)] rounded-2xl border border-gray-800 flex flex-col overflow-hidden">
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          </div>
-        ) : isConfigured === false ? (
-          <NotConfiguredState />
-        ) : !currentConversation ? (
-          // Personality Selection
+        {isConfigured === false ? (
+          <NotConfiguredState t={t} />
+        ) : !selectedPersona ? (
+          // Persona Selection
           <div className="flex-1 flex flex-col items-center justify-center p-6">
-            <h2 className="text-xl font-bold text-white mb-2">Choose an AI to chat with</h2>
-            <p className="text-gray-400 text-sm mb-6">Select a personality to start a conversation</p>
-            <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-              {PERSONALITIES.map(p => {
-                const colors = colorClasses[p.color]
-                const Icon = p.icon
+            <h2 className="text-xl font-bold text-white mb-2">{t('aiChat.selectPersona')}</h2>
+            <p className="text-gray-400 text-sm mb-6">{t('aiChat.selectPersonaDesc')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+              {PERSONAS.map(persona => {
+                const colors = colorClasses[persona.color]
+                const Icon = persona.icon
                 return (
                   <button
-                    key={p.id}
-                    onClick={() => handleNewConversation(p)}
-                    className={`p-4 rounded-xl bg-gradient-to-br ${colors.gradient} border ${colors.border} hover:scale-[1.02] transition-transform text-left`}
+                    key={persona.id}
+                    onClick={() => handleSelectPersona(persona.id)}
+                    className={`p-5 rounded-xl bg-gradient-to-br ${colors.gradient} border ${colors.border} hover:scale-[1.02] transition-transform text-left`}
                   >
-                    <Icon className={`w-8 h-8 ${colors.text} mb-2`} />
-                    <h3 className="font-semibold text-white">{p.name}</h3>
-                    <p className="text-xs text-gray-400">{p.desc}</p>
+                    <Icon className={`w-8 h-8 ${colors.text} mb-3`} />
+                    <h3 className="font-semibold text-white text-lg">
+                      {t(`aiChat.personas.${persona.id}.name`)}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {t(`aiChat.personas.${persona.id}.desc`)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {t(`aiChat.personas.${persona.id}.fullDesc`)}
+                    </p>
                   </button>
                 )
               })}
@@ -381,55 +439,63 @@ export default function AIPage() {
           </div>
         ) : (
           <>
-            {/* Messages */}
+            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {currentConversation.messages.length === 0 ? (
-                <EmptyChatState personality={selectedPersonality} />
+              {messages.length === 0 && !isSending ? (
+                <EmptyChatState 
+                  persona={selectedPersona} 
+                  colors={currentColors}
+                  t={t}
+                />
               ) : (
                 <>
-                  {currentConversation.messages.map((msg, idx) => (
+                  {messages.map((msg, idx) => (
                     <MessageBubble 
-                      key={msg.id || idx} 
+                      key={idx} 
                       message={msg} 
-                      personality={selectedPersonality}
+                      persona={selectedPersona}
+                      colors={currentColors}
+                      t={t}
                     />
                   ))}
-                  {isSending && (
-                    <div className="flex gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center ${colorClasses[selectedPersonality.color].bg} ${colorClasses[selectedPersonality.color].border} border`}>
-                        <Loader2 className={`w-4 h-4 ${colorClasses[selectedPersonality.color].text} animate-spin`} />
-                      </div>
-                      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-gray-800/80 border border-gray-700/50">
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    </div>
+                  
+                  {/* Typing indicator */}
+                  {isSending && <TypingIndicator colors={currentColors} />}
+                  
+                  {/* Error state */}
+                  {error && !isSending && (
+                    <ErrorState error={error} onRetry={handleRetry} t={t} />
                   )}
                 </>
               )}
               <div ref={messagesEndRef} />
             </div>
-            
+
             {/* Input Area */}
             <div className="p-4 border-t border-gray-800">
               <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={`Message ${selectedPersonality.name}...`}
-                  disabled={isSending || !isConfigured}
-                  className="flex-1 px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
-                />
+                <div className="flex-1 relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t('aiChat.messagePlaceholder')}
+                    disabled={isSending || !isConfigured}
+                    maxLength={2000}
+                    className="w-full px-4 py-3 pr-16 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
+                  />
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${
+                    charCount > 1800 ? 'text-amber-400' : charCount > 1950 ? 'text-red-400' : 'text-gray-500'
+                  }`}>
+                    {charCount}/2000
+                  </span>
+                </div>
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isSending || !isConfigured}
-                  className="px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`px-4 py-3 rounded-xl bg-gradient-to-r ${currentColors.button} text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isSending ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

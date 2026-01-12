@@ -1,16 +1,16 @@
 /**
  * AI Chat Service Layer
  * 
- * Handles chat communication and conversation persistence.
+ * Handles chat API communication and conversation persistence.
+ * Uses storage adapter for cross-platform compatibility.
  */
 
 import storage from './storage'
-import { ApiError, ErrorCodes } from './api'
 
 const AI_CHAT_API = '/api/ai/chat'
-const CONVERSATIONS_KEY = 'novatok_ai_conversations'
-const MAX_CONVERSATIONS = 20
-const MAX_MESSAGES_PER_CONVERSATION = 50
+const STORAGE_PREFIX = 'novatok_chat_'
+const MAX_STORED_MESSAGES = 50
+const MAX_API_MESSAGES = 20
 
 // ==========================================
 // API Functions
@@ -18,133 +18,148 @@ const MAX_MESSAGES_PER_CONVERSATION = 50
 
 /**
  * Check AI chat service status
+ * @returns {Promise<{ ok: boolean, configured: boolean }>}
  */
 export async function checkChatStatus() {
-  const response = await fetch(AI_CHAT_API)
-  
-  if (!response.ok) {
-    throw new ApiError('Failed to check AI status', response.status, ErrorCodes.SERVER_ERROR)
+  try {
+    const response = await fetch(AI_CHAT_API)
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('[aiChat] Status check failed:', error)
+    return { ok: false, configured: false }
   }
-  
-  return response.json()
 }
 
 /**
- * Send a message and get AI response
+ * Send a chat message and get AI response
  * @param {Object} params
- * @param {Array} params.messages - Conversation history
- * @param {string} params.personality - AI personality ID
+ * @param {string} params.persona - 'creative' | 'coach' | 'expert'
+ * @param {Array} params.messages - Message history
+ * @param {string} [params.language] - Optional language code
+ * @returns {Promise<{ ok: boolean, message?: { role: string, content: string }, error?: { code: string, message: string } }>}
  */
-export async function sendMessage({ messages, personality }) {
-  const response = await fetch(AI_CHAT_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, personality }),
-  })
-  
-  const data = await response.json()
-  
-  if (!response.ok) {
-    throw new ApiError(
-      data.error || 'Failed to send message',
-      response.status,
-      data.code || ErrorCodes.SERVER_ERROR
-    )
+export async function sendChatMessage({ persona, messages, language }) {
+  try {
+    // Only send last N messages to API
+    const recentMessages = messages.slice(-MAX_API_MESSAGES).map(m => ({
+      role: m.role,
+      content: m.content,
+    }))
+
+    const response = await fetch(AI_CHAT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        persona,
+        messages: recentMessages,
+        language,
+      }),
+    })
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('[aiChat] Send message failed:', error)
+    return {
+      ok: false,
+      error: {
+        code: 'NETWORK_ERROR',
+        message: 'Failed to connect to AI service.',
+      },
+    }
   }
-  
-  return data
 }
 
 // ==========================================
-// Conversation Storage
+// Storage Functions
 // ==========================================
 
 /**
- * Create a new conversation
- * @param {string} personality - AI personality ID
- * @param {string} personalityName - AI display name
+ * Get storage key for a persona
  */
-export async function createConversation(personality, personalityName) {
-  const conversations = await getConversations()
-  
-  const newConversation = {
-    id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    personality,
-    personalityName,
-    messages: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+function getStorageKey(persona) {
+  return `${STORAGE_PREFIX}${persona}`
+}
+
+/**
+ * Load conversation for a persona
+ * @param {string} persona
+ * @returns {Promise<{ messages: Array, updatedAt: string } | null>}
+ */
+export async function loadConversation(persona) {
+  try {
+    const data = await storage.getItem(getStorageKey(persona))
+    if (data && Array.isArray(data.messages)) {
+      return {
+        messages: data.messages,
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('[aiChat] Load conversation failed:', error)
+    return null
   }
-  
-  const updated = [newConversation, ...conversations].slice(0, MAX_CONVERSATIONS)
-  await storage.setItem(CONVERSATIONS_KEY, updated)
-  
-  return newConversation
 }
 
 /**
- * Get all conversations
+ * Save conversation for a persona
+ * @param {string} persona
+ * @param {Array} messages
+ * @returns {Promise<void>}
  */
-export async function getConversations() {
-  const stored = await storage.getItem(CONVERSATIONS_KEY, [])
-  return Array.isArray(stored) ? stored : []
-}
-
-/**
- * Get a specific conversation by ID
- */
-export async function getConversation(id) {
-  const conversations = await getConversations()
-  return conversations.find(c => c.id === id) || null
-}
-
-/**
- * Add a message to a conversation
- * @param {string} conversationId
- * @param {Object} message - { role: 'user'|'assistant', content: string }
- */
-export async function addMessageToConversation(conversationId, message) {
-  const conversations = await getConversations()
-  const index = conversations.findIndex(c => c.id === conversationId)
-  
-  if (index === -1) {
-    throw new Error('Conversation not found')
+export async function saveConversation(persona, messages) {
+  try {
+    // Truncate to max stored messages
+    const truncatedMessages = messages.slice(-MAX_STORED_MESSAGES)
+    
+    await storage.setItem(getStorageKey(persona), {
+      messages: truncatedMessages,
+      updatedAt: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('[aiChat] Save conversation failed:', error)
   }
-  
-  const conversation = conversations[index]
-  conversation.messages = [
-    ...conversation.messages.slice(-MAX_MESSAGES_PER_CONVERSATION + 1),
-    {
-      ...message,
-      id: `msg_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-    },
-  ]
-  conversation.updatedAt = new Date().toISOString()
-  
-  // Move to top of list
-  conversations.splice(index, 1)
-  conversations.unshift(conversation)
-  
-  await storage.setItem(CONVERSATIONS_KEY, conversations)
-  
-  return conversation
 }
 
 /**
- * Delete a conversation
+ * Clear conversation for a persona
+ * @param {string} persona
+ * @returns {Promise<void>}
  */
-export async function deleteConversation(id) {
-  const conversations = await getConversations()
-  const filtered = conversations.filter(c => c.id !== id)
-  await storage.setItem(CONVERSATIONS_KEY, filtered)
+export async function clearConversation(persona) {
+  try {
+    await storage.removeItem(getStorageKey(persona))
+  } catch (error) {
+    console.error('[aiChat] Clear conversation failed:', error)
+  }
 }
 
 /**
- * Clear all conversations
+ * Get all saved conversations (for history view)
+ * @returns {Promise<Array<{ persona: string, messageCount: number, updatedAt: string }>>}
  */
-export async function clearAllConversations() {
-  await storage.setItem(CONVERSATIONS_KEY, [])
+export async function getAllConversations() {
+  const personas = ['creative', 'coach', 'expert']
+  const conversations = []
+
+  for (const persona of personas) {
+    const data = await loadConversation(persona)
+    if (data && data.messages.length > 0) {
+      conversations.push({
+        persona,
+        messageCount: data.messages.length,
+        updatedAt: data.updatedAt,
+        preview: getConversationPreview(data.messages),
+      })
+    }
+  }
+
+  // Sort by most recent
+  return conversations.sort((a, b) => 
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
 }
 
 // ==========================================
@@ -152,26 +167,43 @@ export async function clearAllConversations() {
 // ==========================================
 
 /**
- * Format conversation date for display
+ * Get a preview of the conversation (first user message)
  */
-export function formatConversationDate(dateString) {
-  const date = new Date(dateString)
+function getConversationPreview(messages) {
+  const firstUserMsg = messages.find(m => m.role === 'user')
+  if (!firstUserMsg) return ''
+  const content = firstUserMsg.content
+  return content.length > 50 ? content.slice(0, 50) + '...' : content
+}
+
+/**
+ * Format timestamp for display
+ */
+export function formatChatTime(timestamp) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
   const now = new Date()
-  const diff = now - date
-  
+  const diff = now.getTime() - date.getTime()
+
   if (diff < 60000) return 'Just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
-  
+
   return date.toLocaleDateString()
 }
 
 /**
- * Get conversation preview (first user message)
+ * Validate message input
+ * @param {string} content
+ * @returns {{ valid: boolean, error?: string }}
  */
-export function getConversationPreview(conversation) {
-  const firstUserMessage = conversation.messages.find(m => m.role === 'user')
-  if (!firstUserMessage) return 'New conversation'
-  return firstUserMessage.content.slice(0, 60) + (firstUserMessage.content.length > 60 ? '...' : '')
+export function validateMessageInput(content) {
+  if (!content || content.trim().length === 0) {
+    return { valid: false, error: 'Message cannot be empty' }
+  }
+  if (content.length > 2000) {
+    return { valid: false, error: 'Message is too long (max 2000 characters)' }
+  }
+  return { valid: true }
 }

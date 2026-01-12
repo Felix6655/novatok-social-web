@@ -94,6 +94,44 @@
       "wide": "Widescreen"
     }
   },
+  "aiChat": {
+    "title": "Chat with AIs",
+    "subtitle": "AI-powered conversations",
+    "chattingWith": "Chatting with {{name}}",
+    "selectPersona": "Choose an AI to chat with",
+    "selectPersonaDesc": "Select a personality to start a conversation",
+    "notConfigured": "AI Service Not Configured",
+    "notConfiguredDesc": "Set OPENAI_API_KEY in your environment to enable AI chat.",
+    "newChat": "New Chat",
+    "clearChat": "Clear Chat",
+    "clearChatConfirm": "Clear this conversation?",
+    "messagePlaceholder": "Type a message...",
+    "send": "Send",
+    "typing": "Typing...",
+    "emptyChat": "Start a conversation",
+    "emptyChatDesc": "Type a message below to begin chatting",
+    "errorRetry": "Retry",
+    "errorOccurred": "Something went wrong",
+    "messageTooLong": "Message is too long (max 2000 characters)",
+    "messageEmpty": "Please enter a message",
+    "personas": {
+      "creative": {
+        "name": "Muse",
+        "desc": "Creative Partner",
+        "fullDesc": "Helps with art, writing, brainstorming"
+      },
+      "coach": {
+        "name": "Sage",
+        "desc": "Life Coach",
+        "fullDesc": "Advice on goals, motivation, wellness"
+      },
+      "expert": {
+        "name": "Atlas",
+        "desc": "Knowledge Expert",
+        "fullDesc": "Explains complex topics simply"
+      }
+    }
+  },
   "reels": {
     "aiGenerated": "AI Generated",
     "aiStudio": "AI Studio",
