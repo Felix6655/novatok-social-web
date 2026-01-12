@@ -792,6 +792,268 @@ function AiImageReelCard({ reel, isActive, onSaveToggle, onReact, onDelete }) {
   )
 }
 
+// AI Video Reel Card Component
+function AiVideoReelCard({ reel, isActive, onSaveToggle, onReact, onDelete, isMuted, onMuteToggle }) {
+  const config = AI_VIDEO_CONFIG
+  const [saved, setSaved] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [videoError, setVideoError] = useState(false)
+  const [showControls, setShowControls] = useState(true)
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    setSaved(isSaved('ai_video', reel.id))
+  }, [reel.id])
+
+  // Auto-play/pause based on active state
+  useEffect(() => {
+    if (!videoRef.current || !reel.videoUrl) return
+
+    if (isActive && !videoError) {
+      videoRef.current.play().then(() => {
+        setIsPlaying(true)
+      }).catch(() => {
+        setIsPlaying(false)
+      })
+    } else {
+      videoRef.current.pause()
+      setIsPlaying(false)
+    }
+  }, [isActive, reel.videoUrl, videoError])
+
+  // Update muted state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted
+    }
+  }, [isMuted])
+
+  // Hide controls after inactivity
+  useEffect(() => {
+    if (!isActive) return
+    setShowControls(true)
+    const timer = setTimeout(() => setShowControls(false), 3000)
+    return () => clearTimeout(timer)
+  }, [isActive])
+
+  const togglePlayPause = () => {
+    if (!videoRef.current || !reel.videoUrl || videoError) return
+
+    if (isPlaying) {
+      videoRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {})
+    }
+  }
+
+  const handleSave = () => {
+    if (saved) {
+      unsaveItem('ai_video', reel.id)
+      setSaved(false)
+      onSaveToggle?.(false)
+    } else {
+      saveItem({
+        type: 'ai_video',
+        sourceId: reel.id,
+        title: reel.title,
+        summary: reel.summary,
+        metadata: reel.metadata,
+        createdAt: reel.createdAt
+      })
+      setSaved(true)
+      onSaveToggle?.(true)
+    }
+  }
+
+  const handleShare = () => {
+    onSaveToggle?.('share')
+  }
+
+  const handleVideoError = () => {
+    console.error('[AiVideoReelCard] Video failed to load:', reel.videoUrl)
+    setVideoError(true)
+  }
+
+  return (
+    <div 
+      className="h-full w-full flex items-center justify-center p-4 md:p-8"
+      onMouseMove={() => setShowControls(true)}
+      onClick={togglePlayPause}
+    >
+      <div className="relative w-full max-w-lg h-full max-h-[600px] flex flex-col">
+        {/* Main Card */}
+        <div className={`flex-1 rounded-3xl bg-gradient-to-br ${config.gradient} backdrop-blur-xl border ${config.borderAccent} shadow-2xl overflow-hidden flex flex-col`}>
+          {/* Header */}
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl ${config.bgAccent} flex items-center justify-center border ${config.borderAccent}`}>
+                <Video className={`w-5 h-5 ${config.accentColor}`} />
+              </div>
+              <div>
+                <span className={`text-sm font-semibold ${config.accentColor}`}>
+                  AI Generated
+                </span>
+                <p className="text-xs text-white/60">{formatFeedDate(reel.createdAt)}</p>
+              </div>
+            </div>
+            <span className="px-2 py-1 rounded-full bg-cyan-500/30 text-cyan-300 text-xs font-medium">
+              🎬 AI Video
+            </span>
+          </div>
+
+          {/* Video Container */}
+          <div className="flex-1 relative bg-black/30">
+            {videoError ? (
+              // Error state
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-400" />
+                </div>
+                <h3 className="text-white font-semibold mb-2">Video unavailable</h3>
+                <p className="text-gray-400 text-sm mb-4">Failed to load this AI-generated video</p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setVideoError(false); }}
+                  className="px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-sm font-medium hover:bg-cyan-500/30 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4 inline mr-2" />
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <>
+                <video
+                  ref={videoRef}
+                  src={reel.videoUrl}
+                  className="w-full h-full object-contain"
+                  autoPlay={isActive}
+                  loop
+                  muted={isMuted}
+                  playsInline
+                  controls={false}
+                  onError={handleVideoError}
+                />
+
+                {/* Play/Pause Overlay */}
+                {!isPlaying && !videoError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <Play className="w-10 h-10 text-white ml-1" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Mute Button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMuteToggle?.(); }}
+                  className={`absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white transition-opacity ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Prompt/Caption Overlay */}
+          <div className="p-4 bg-black/40 backdrop-blur-sm">
+            {reel.metadata?.caption && (
+              <p className="text-white font-medium mb-1">{reel.metadata.caption}</p>
+            )}
+            <p className="text-white/70 text-sm line-clamp-2">
+              {reel.metadata?.prompt || reel.summary}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/50">Swipe for more</span>
+              <div className="flex items-center gap-1">
+                <ChevronUp className="w-4 h-4 text-white/50" />
+                <ChevronDown className="w-4 h-4 text-white/50" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Rail (Right side) */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+16px)] hidden md:flex flex-col gap-4">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSave(); }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              saved 
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20'
+            }`}
+            title={saved ? 'Remove from saved' : 'Save'}
+          >
+            <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onMuteToggle?.(); }}
+            className="w-12 h-12 rounded-full bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all"
+            title={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleShare(); }}
+            className="w-12 h-12 rounded-full bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all"
+            title="Share"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+
+          {/* Reactions */}
+          <ReactionButtons reelId={reel.id} onReact={onReact} />
+
+          {/* Delete button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id); }}
+            className="w-12 h-12 rounded-full bg-white/10 text-red-400/70 hover:text-red-400 hover:bg-red-500/20 border border-white/20 flex items-center justify-center transition-all"
+            title="Delete"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Mobile Actions */}
+        <div className="md:hidden flex items-center justify-center gap-4 mt-4">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSave(); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              saved 
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+                : 'bg-white/10 text-white/70 border border-white/20'
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
+            <span className="text-sm">{saved ? 'Saved' : 'Save'}</span>
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onMuteToggle?.(); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/70 border border-white/20"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span className="text-sm">{isMuted ? 'Unmute' : 'Mute'}</span>
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete?.(reel.id); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-red-400/70 border border-white/20"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function EmptyState({ onUploadClick, onRecordClick }) {
   return (
     <div className="h-full w-full flex items-center justify-center p-8">
