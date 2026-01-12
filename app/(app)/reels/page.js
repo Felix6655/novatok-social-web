@@ -1918,6 +1918,29 @@ export default function ReelsPage() {
     toast({ type: 'info', message: 'Video deleted' })
   }
 
+  // Delete AI-generated reel
+  const handleDeleteAiReel = async (reelId) => {
+    try {
+      // Remove from AI reels state
+      const updatedAiReels = aiReels.filter(r => r.id !== reelId)
+      await saveAiReels(updatedAiReels)
+      setAiReels(updatedAiReels)
+      
+      // Update combined reels
+      setReels(prev => prev.filter(r => r.id !== reelId))
+      
+      // Adjust index if needed
+      if (currentIndex >= reels.length - 1) {
+        setCurrentIndex(Math.max(0, currentIndex - 1))
+      }
+      
+      toast({ type: 'info', message: 'AI image deleted' })
+    } catch (error) {
+      console.error('[Reels] Failed to delete AI reel:', error)
+      toast({ type: 'error', message: 'Failed to delete' })
+    }
+  }
+
   const goToNext = () => {
     setCurrentIndex(prev => Math.min(prev + 1, reels.length - 1))
   }
