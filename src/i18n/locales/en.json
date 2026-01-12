@@ -178,7 +178,14 @@
     "tip1": "Make sure you have good lighting",
     "tip2": "Hold your device steady",
     "tip3": "Speak clearly if recording with audio",
-    "maxDuration": "Maximum recording: {{seconds}} seconds"
+    "maxDuration": "Maximum recording: {{seconds}} seconds",
+    "uploadingVideo": "Uploading video...",
+    "uploading": "Uploading...",
+    "uploadFailed": "Upload failed. Please try again.",
+    "noVideoToPost": "No video to post",
+    "storageNotConfigured": "Storage not configured",
+    "storageNotConfiguredDesc": "Video upload requires Supabase Storage configuration.",
+    "storageRequiredToPost": "Storage must be configured to post videos"
   },
   "reels": {
     "aiGenerated": "AI Generated",
