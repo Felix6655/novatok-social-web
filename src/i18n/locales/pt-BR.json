@@ -107,6 +107,44 @@
     "close": "Fechar",
     "technicalDetails": "Detalhes Técnicos"
   },
+  "aiChat": {
+    "title": "Chat com IAs",
+    "subtitle": "Conversas com IA",
+    "chattingWith": "Conversando com {{name}}",
+    "selectPersona": "Escolha uma IA para conversar",
+    "selectPersonaDesc": "Selecione uma personalidade para começar",
+    "notConfigured": "Serviço de IA Não Configurado",
+    "notConfiguredDesc": "Configure OPENAI_API_KEY no seu ambiente para habilitar o chat com IA.",
+    "newChat": "Novo Chat",
+    "clearChat": "Limpar Chat",
+    "clearChatConfirm": "Limpar esta conversa?",
+    "messagePlaceholder": "Digite uma mensagem...",
+    "send": "Enviar",
+    "typing": "Digitando...",
+    "emptyChat": "Inicie uma conversa",
+    "emptyChatDesc": "Digite uma mensagem abaixo para começar",
+    "errorRetry": "Tentar novamente",
+    "errorOccurred": "Algo deu errado",
+    "messageTooLong": "Mensagem muito longa (máx 2000 caracteres)",
+    "messageEmpty": "Por favor digite uma mensagem",
+    "personas": {
+      "creative": {
+        "name": "Muse",
+        "desc": "Parceiro Criativo",
+        "fullDesc": "Ajuda com arte, escrita, brainstorming"
+      },
+      "coach": {
+        "name": "Sage",
+        "desc": "Coach de Vida",
+        "fullDesc": "Conselhos sobre metas, motivação, bem-estar"
+      },
+      "expert": {
+        "name": "Atlas",
+        "desc": "Especialista em Conhecimento",
+        "fullDesc": "Explica temas complexos de forma simples"
+      }
+    }
+  },
   "settings": {
     "title": "Configurações",
     "language": "Idioma",
